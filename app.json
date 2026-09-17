@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Khetha NCAP",
+    "slug": "khetha-ncap",
+    "scheme": "khetha",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
+    "experiments": {"typedRoutes": true}
+  }
+}

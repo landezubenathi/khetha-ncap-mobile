@@ -1,0 +1,2 @@
+import { Text, View } from 'react-native'; import { colors, spacing } from '../../src/theme'; import { useUserStore } from '../../src/store/user';
+export default function Saved() { const saved = useUserStore(s => s.saved); return <View style={{ flex: 1, backgroundColor: colors.bg, padding: spacing.md }}><Text style={{ fontSize: 28, fontWeight: '800', color: colors.navy }}>Saved</Text><Text style={{ color: colors.muted, marginTop: 8 }}>{saved.length ? `${saved.length} saved item(s)` : 'Save careers, qualifications and providers to find them quickly.'}</Text></View>; }
