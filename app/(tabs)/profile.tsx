@@ -1,6 +1,6 @@
-import { Alert, SafeAreaView, ScrollView, Text, View, Pressable, Linking } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, Text, View, Pressable, Linking, Animated } from 'react-native';
 import { router } from 'expo-router';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, shadow, fs } from '../../src/theme';
 import { useUserStore, useJourneyProgress } from '../../src/store/user';
@@ -13,6 +13,47 @@ const GRADES = ['Grade 9', 'Grade 10', 'Grade 11', 'Grade 12', 'Post-matric', 'A
 
 type SavedField = 'grade' | 'province' | 'language' | null;
 
+// Animated tick badge shown after saving a field
+function SavedTick({ visible }: { visible: boolean }) {
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }),
+        Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(scale, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  return (
+    <Animated.View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      opacity, transform: [{ scale }],
+    }}>
+      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="checkmark" size={11} color={colors.white} />
+      </View>
+      <Text style={{ color: colors.teal, fontSize: 12, fontWeight: '800' }}>Saved</Text>
+    </Animated.View>
+  );
+}
+
+// Persistent tick shown when a field already has a value (not flashing)
+function FieldTick() {
+  return (
+    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name="checkmark" size={12} color={colors.teal} />
+    </View>
+  );
+}
+
 export default function Profile() {
   const t = useT();
   const { language, setLanguage, province, setProvince, grade, setGrade, fontScale, consentGiven, allResults, clearAll } = useUserStore();
@@ -23,7 +64,7 @@ export default function Profile() {
   function flash(field: SavedField) {
     if (timerRef.current) clearTimeout(timerRef.current);
     setConfirmedField(field);
-    timerRef.current = setTimeout(() => setConfirmedField(null), 2000);
+    timerRef.current = setTimeout(() => setConfirmedField(null), 2200);
   }
 
   function handleSetGrade(g: string) { setGrade(g); flash('grade'); }
@@ -33,7 +74,7 @@ export default function Profile() {
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
     clearAll();
-    router.replace('/onboarding');
+    setTimeout(() => router.replace('/'), 50);
   }
 
   function confirmReset() {
@@ -45,7 +86,10 @@ export default function Profile() {
         {
           text: 'Yes, start over',
           style: 'destructive',
-          onPress: () => { clearAll(); router.replace('/onboarding'); },
+          onPress: () => {
+            clearAll();
+            setTimeout(() => router.replace('/'), 50);
+          },
         },
       ]
     );
@@ -92,9 +136,12 @@ export default function Profile() {
         {/* Grade */}
         <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Your grade / level</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Your grade / level</Text>
+              {grade && confirmedField !== 'grade' && <FieldTick />}
+            </View>
             {confirmedField === 'grade'
-              ? <Text style={{ color: colors.teal, fontSize: 12, fontWeight: '800' }}>✓ Saved</Text>
+              ? <SavedTick visible />
               : !grade
               ? <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Required</Text>
               : null}
@@ -123,8 +170,11 @@ export default function Profile() {
         {/* Language */}
         <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>{t('language_prompt')}</Text>
-            {confirmedField === 'language' && <Text style={{ color: colors.teal, fontSize: 12, fontWeight: '800' }}>✓ Saved</Text>}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>{t('language_prompt')}</Text>
+              {language && confirmedField !== 'language' && <FieldTick />}
+            </View>
+            <SavedTick visible={confirmedField === 'language'} />
           </View>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {LANGUAGE_LIST.map((lang) => (
@@ -150,9 +200,12 @@ export default function Profile() {
         {/* Province */}
         <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Your province</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Your province</Text>
+              {province && confirmedField !== 'province' && <FieldTick />}
+            </View>
             {confirmedField === 'province'
-              ? <Text style={{ color: colors.teal, fontSize: 12, fontWeight: '800' }}>✓ Saved</Text>
+              ? <SavedTick visible />
               : !province
               ? <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Required</Text>
               : null}

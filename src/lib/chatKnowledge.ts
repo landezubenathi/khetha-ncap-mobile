@@ -209,6 +209,112 @@ const SALARY_FAQS: FAQ[] = [
   },
 ];
 
+// ── Live data summary ────────────────────────────────────────────────────────
+
+function buildSummary(): string {
+  // Careers by field
+  const fieldCounts: Record<string, number> = {};
+  for (const c of CAREERS) fieldCounts[c.field] = (fieldCounts[c.field] ?? 0) + 1;
+  const fieldLines = Object.entries(fieldCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([f, n]) => `  • ${f}: ${n} career${n > 1 ? 's' : ''}`);
+
+  // Outlook breakdown
+  const outlookCounts: Record<string, number> = {};
+  for (const c of CAREERS) outlookCounts[c.outlook] = (outlookCounts[c.outlook] ?? 0) + 1;
+  const outlookLines = Object.entries(outlookCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([o, n]) => `  • ${o}: ${n}`);
+
+  // Salary stats — parse lower bound of each range
+  const lowers = CAREERS.map((c) => {
+    const match = c.salary_range.match(/R([\.\d\s]+)/);
+    return match ? parseFloat(match[1].replace(/\s/g, '')) : 0;
+  }).filter((v) => v > 0);
+  const minSalary = Math.min(...lowers);
+  const maxSalary = Math.max(...lowers);
+  const avgSalary = Math.round(lowers.reduce((a, b) => a + b, 0) / lowers.length);
+  const fmt = (v: number) => `R${(v / 1000).toFixed(0)}k`;
+
+  // Qualifications by NQF level
+  const nqfCounts: Record<string, number> = {};
+  for (const q of QUALIFICATIONS) nqfCounts[q.nqf_level] = (nqfCounts[q.nqf_level] ?? 0) + 1;
+  const nqfLines = Object.entries(nqfCounts)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([lvl, n]) => `  • NQF ${lvl}: ${n} qualification${n > 1 ? 's' : ''}`);
+
+  // Qualifications by field
+  const qualFieldCounts: Record<string, number> = {};
+  for (const q of QUALIFICATIONS) qualFieldCounts[q.field] = (qualFieldCounts[q.field] ?? 0) + 1;
+  const qualFieldLines = Object.entries(qualFieldCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([f, n]) => `  • ${f}: ${n}`);
+
+  // Providers by type
+  const provTypeCounts: Record<string, number> = {};
+  for (const p of PROVIDERS) provTypeCounts[p.provider_type] = (provTypeCounts[p.provider_type] ?? 0) + 1;
+  const provTypeLines = Object.entries(provTypeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => `  • ${t}: ${n}`);
+
+  // Provinces covered
+  const provProvinces = [...new Set(PROVIDERS.map((p) => p.province))].sort();
+  const distanceLearningCount = PROVIDERS.filter((p) => p.distance_learning).length;
+  const totalQuals = PROVIDERS.reduce((s, p) => s + p.qualifications_count, 0);
+
+  // Advisers by province
+  const advProvCounts: Record<string, number> = {};
+  for (const a of ADVISERS) advProvCounts[a.province] = (advProvCounts[a.province] ?? 0) + 1;
+  const walkInCount = ADVISERS.filter((a) => a.walk_in).length;
+  const langSet = new Set(ADVISERS.flatMap((a) => a.languages));
+
+  // Events by type
+  const evtTypeCounts: Record<string, number> = {};
+  for (const e of EVENTS) evtTypeCounts[e.type] = (evtTypeCounts[e.type] ?? 0) + 1;
+  const evtProvinces = [...new Set(EVENTS.map((e) => e.province))].sort();
+
+  return [
+    '📊 KHETHA APP — FULL DATA SUMMARY',
+    '',
+    `━━ CAREERS (${CAREERS.length} total) ━━`,
+    'By field:',
+    ...fieldLines,
+    'By outlook:',
+    ...outlookLines,
+    `Salary range across all careers:`,
+    `  • Lowest starting: ${fmt(minSalary)} p/a`,
+    `  • Highest starting: ${fmt(maxSalary)} p/a`,
+    `  • Average starting: ${fmt(avgSalary)} p/a`,
+    '',
+    `━━ QUALIFICATIONS (${QUALIFICATIONS.length} total) ━━`,
+    'By NQF level:',
+    ...nqfLines,
+    'By field:',
+    ...qualFieldLines,
+    '',
+    `━━ PROVIDERS (${PROVIDERS.length} total) ━━`,
+    'By type:',
+    ...provTypeLines,
+    `Provinces covered: ${provProvinces.join(', ')}`,
+    `Distance learning options: ${distanceLearningCount}`,
+    `Total qualifications listed: ${totalQuals}`,
+    '',
+    `━━ ADVISERS (${ADVISERS.length} total) ━━`,
+    `Walk-in accepted: ${walkInCount} of ${ADVISERS.length}`,
+    `Languages spoken: ${[...langSet].sort().join(', ')}`,
+    `Provinces with advisers: ${Object.keys(advProvCounts).length} of 9`,
+    '',
+    `━━ EVENTS (${EVENTS.length} total) ━━`,
+    ...Object.entries(evtTypeCounts).map(([t, n]) => `  • ${t}: ${n}`),
+    `Provinces hosting events: ${evtProvinces.join(', ')}`,
+    '',
+    `━━ WALK-IN CENTRES (${WALK_IN_CENTRES.length} total) ━━`,
+    `All 9 provinces covered: ${WALK_IN_CENTRES.map((w) => w.province).join(', ')}`,
+    '',
+    'Ask me about any specific career, qualification, provider, adviser or event for full details.',
+  ].join('\n');
+}
+
 // ── Combined knowledge base ───────────────────────────────────────────────────
 
 export const KNOWLEDGE_BASE: FAQ[] = [
@@ -223,8 +329,15 @@ export const KNOWLEDGE_BASE: FAQ[] = [
   ...WALKIN_FAQS,
 ];
 
+const SUMMARY_TRIGGERS = [
+  'summary', 'overview', 'stats', 'statistics', 'metrics', 'data summary',
+  'all data', 'how many', 'total careers', 'total qualifications', 'total providers',
+  'what data', 'show data', 'show all', 'full summary', 'data overview',
+];
+
 export function findAnswer(input: string): string {
   const lower = input.toLowerCase();
+  if (SUMMARY_TRIGGERS.some((t) => lower.includes(t))) return buildSummary();
   for (const faq of KNOWLEDGE_BASE) {
     if (faq.keywords.some((k) => k && lower.includes(k))) return faq.answer;
   }
@@ -232,25 +345,26 @@ export function findAnswer(input: string): string {
 }
 
 export const SUGGESTED_QUESTIONS = [
+  'Show full data summary',
   'What is Khetha?',
-  'How does the career quiz work?',
-  'What are the app features?',
   'Show me high demand careers',
+  'How does the career quiz work?',
   'What is NQF?',
   'How do I get a bursary?',
-  'What is NSFAS?',
   'Tell me about Software Developer',
   'Tell me about Nursing',
   'Upcoming events',
   'Walk-in centres',
   'How is APS calculated?',
+  'What are the app features?',
 ];
 
 export const QUICK_CATEGORIES = [
-  { label: 'App', color: '#7B61FF', questions: ['What is Khetha?', 'What are the app features?', 'How does the career quiz work?', 'How does the Journey work?'] },
-  { label: 'Careers', color: '#0E9384', questions: ['Show me high demand careers', 'Tell me about Software Developer', 'Tell me about Nursing', 'Tell me about Electrician'] },
-  { label: 'Study', color: '#1677FF', questions: ['What is NQF?', 'How is APS calculated?', 'What are TVET colleges?', 'Tell me about UNISA'] },
-  { label: 'Funding', color: '#F4B740', questions: ['How do I get a bursary?', 'What is NSFAS?', 'When do university applications open?'] },
-  { label: 'Events', color: '#E05C2A', questions: ['Upcoming events', 'Khetha Career Expo Gauteng', 'Health Careers Webinar'] },
-  { label: 'Contact', color: '#38A169', questions: ['Walk-in centres', 'Talk to an adviser', 'Khetha Cape Town', 'Khetha Johannesburg'] },
+  { label: 'Summary', color: '#7B61FF', questions: ['Show full data summary', 'How many careers are there?', 'Show all metrics', 'Data overview'] },
+  { label: 'App', color: '#0E9384', questions: ['What is Khetha?', 'What are the app features?', 'How does the career quiz work?', 'How does the Journey work?'] },
+  { label: 'Careers', color: '#1677FF', questions: ['Show me high demand careers', 'Tell me about Software Developer', 'Tell me about Nursing', 'Tell me about Electrician'] },
+  { label: 'Study', color: '#F4B740', questions: ['What is NQF?', 'How is APS calculated?', 'What are TVET colleges?', 'Tell me about UNISA'] },
+  { label: 'Funding', color: '#E05C2A', questions: ['How do I get a bursary?', 'What is NSFAS?', 'When do university applications open?'] },
+  { label: 'Events', color: '#38A169', questions: ['Upcoming events', 'Khetha Career Expo Gauteng', 'Health Careers Webinar'] },
+  { label: 'Contact', color: '#0A7A6E', questions: ['Walk-in centres', 'Talk to an adviser', 'Khetha Cape Town', 'Khetha Johannesburg'] },
 ];
