@@ -1,6 +1,6 @@
 /**
  * app/chatbot.tsx
- * Khetha FAQ Chatbot — instant answers to common career guidance questions.
+ * Khetha FAQ Chatbot — premium dark UI with full seed-data knowledge base.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -9,131 +9,62 @@ import {
   ScrollView, Text, TextInput, View, Animated,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, radius, shadow } from '../src/theme';
-
-// ── FAQ Knowledge Base ────────────────────────────────────────────────────────
-
-const FAQ: Array<{ keywords: string[]; answer: string }> = [
-  {
-    keywords: ['khetha', 'what is', 'about'],
-    answer: 'Khetha is a free career guidance service by the Department of Higher Education and Training (DHET). It helps learners, students and job seekers make informed decisions about careers, qualifications and study pathways.',
-  },
-  {
-    keywords: ['ncap', 'national career'],
-    answer: 'NCAP stands for the National Career Advice Portal. It is the online platform that powers Khetha, providing career information, assessments and guidance resources for all South Africans.',
-  },
-  {
-    keywords: ['quiz', 'assessment', 'career choice', 'questionnaire'],
-    answer: 'The Career Choice quiz helps you discover careers that match your interests across 6 clusters. The Job Fit quiz reveals your work style across 8 dimensions. Both take about 5–10 minutes and are completely free.',
-  },
-  {
-    keywords: ['nqf', 'level', 'qualification level'],
-    answer: 'NQF stands for National Qualifications Framework. It has 10 levels:\n• NQF 1–3: School certificates\n• NQF 4: Matric (Grade 12)\n• NQF 5–6: Diplomas and Higher Certificates\n• NQF 7: Bachelor degrees\n• NQF 8: Honours / Postgraduate Diplomas\n• NQF 9–10: Masters and Doctorates',
-  },
-  {
-    keywords: ['tvet', 'college', 'technical'],
-    answer: 'TVET Colleges (Technical and Vocational Education and Training) offer practical, skills-based qualifications at NQF levels 2–6. They are a great alternative to university, especially for artisan trades, engineering, business and IT.',
-  },
-  {
-    keywords: ['bursary', 'scholarship', 'funding', 'financial aid'],
-    answer: 'Bursaries are available from NSFAS (for TVET and university students), SETA organisations, government departments, and private companies. Visit nsfas.org.za or contact a Khetha adviser to find bursaries matching your field.',
-  },
-  {
-    keywords: ['nsfas', 'student loan', 'financial'],
-    answer: 'NSFAS (National Student Financial Aid Scheme) provides funding for eligible South African students at public universities and TVET colleges. Apply at nsfas.org.za. You need your ID, proof of income and acceptance letter.',
-  },
-  {
-    keywords: ['aps', 'admission point', 'score'],
-    answer: 'APS (Admission Point Score) is calculated from your Grade 12 results. Each subject is scored 1–7 based on your percentage. Life Orientation counts as half. Most universities require an APS of 20–35+ depending on the programme.',
-  },
-  {
-    keywords: ['matric', 'grade 12', 'pass'],
-    answer: 'There are 3 types of matric pass:\n• NSC Pass (30%+ in 3 subjects): Basic pass\n• Diploma Pass (40%+ in 4 subjects): Qualifies for TVET and some university programmes\n• Bachelor Pass (50%+ in 4 subjects + 30% in 3 others): Qualifies for university degree programmes',
-  },
-  {
-    keywords: ['adviser', 'advisor', 'counsellor', 'contact', 'speak'],
-    answer: 'Khetha career advisers are available in all 9 provinces. You can:\n• Call: 086 999 0123 (free)\n• WhatsApp: 083 123 4567\n• Visit a walk-in centre near you\n• Attend a Khetha career expo\nAll services are free of charge.',
-  },
-  {
-    keywords: ['province', 'walk-in', 'centre', 'office'],
-    answer: 'Khetha has walk-in centres in all 9 provinces — from Johannesburg and Cape Town to Polokwane and East London. Go to the Contact tab in the app and tap "Walk-in" to find the nearest centre with directions.',
-  },
-  {
-    keywords: ['subject', 'choose', 'which subject'],
-    answer: 'Subject choice in Grade 9 is very important. Use the Subject Chooser tool in this app to see which subjects are required, recommended or advantageous for your dream career. Mathematics and Physical Sciences open the most doors.',
-  },
-  {
-    keywords: ['artisan', 'trade', 'apprenticeship'],
-    answer: 'Artisan trades (electrician, plumber, welder, etc.) are in high demand in South Africa. You need Grade 10–12 with Mathematics and Physical Sciences, then complete an apprenticeship (3–4 years) and pass a trade test. SETAs fund many apprenticeships.',
-  },
-  {
-    keywords: ['salary', 'earn', 'income', 'pay'],
-    answer: 'Salaries vary widely by career and experience. In this app, each career profile shows a salary range. Generally:\n• Artisans: R120k–R480k p/a\n• Nurses: R150k–R480k p/a\n• Engineers: R300k–R900k p/a\n• Doctors/Lawyers: R500k–R1.2M+ p/a',
-  },
-  {
-    keywords: ['online', 'distance', 'unisa', 'remote'],
-    answer: 'UNISA (University of South Africa) is the largest distance learning institution in Africa. It offers hundreds of qualifications you can study from home. Visit unisa.ac.za to apply. Many TVET colleges also offer part-time programmes.',
-  },
-  {
-    keywords: ['application', 'apply', 'deadline', 'when'],
-    answer: 'University applications typically open in April and close in September for the following year. TVET colleges have rolling admissions. Set a deadline reminder in the Saved tab of this app so you never miss a closing date.',
-  },
-  {
-    keywords: ['hello', 'hi', 'hey', 'greet'],
-    answer: 'Hello! 👋 I am the Khetha FAQ assistant. I can answer questions about careers, qualifications, TVET colleges, bursaries, NQF levels, subject choices and more. What would you like to know?',
-  },
-  {
-    keywords: ['thank', 'thanks'],
-    answer: 'You are welcome! 😊 Remember, Khetha advisers are always available on 086 999 0123 if you need more personalised guidance. Good luck on your career journey!',
-  },
-];
-
-const SUGGESTED = [
-  'What is Khetha?',
-  'How does the career quiz work?',
-  'What is NQF?',
-  'How do I get a bursary?',
-  'What is NSFAS?',
-  'How is APS calculated?',
-  'What are TVET colleges?',
-  'How do I contact an adviser?',
-];
+import { findAnswer, SUGGESTED_QUESTIONS, QUICK_CATEGORIES } from '../src/lib/chatKnowledge';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Message = { id: string; role: 'user' | 'bot'; text: string };
+type Message = { id: string; role: 'user' | 'bot'; text: string; ts: Date };
 
-// ── Match FAQ ─────────────────────────────────────────────────────────────────
-
-function findAnswer(input: string): string {
-  const lower = input.toLowerCase();
-  for (const faq of FAQ) {
-    if (faq.keywords.some((k) => lower.includes(k))) return faq.answer;
-  }
-  return "I don't have a specific answer for that yet. For personalised guidance, please call Khetha on 086 999 0123 (free) or use the AI Advisor in this app for career-specific recommendations.";
-}
-
-// ── Typing indicator ──────────────────────────────────────────────────────────
+// ── Typing dots ───────────────────────────────────────────────────────────────
 
 function TypingDots() {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const dots = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
   useEffect(() => {
     const anims = dots.map((dot, i) =>
       Animated.loop(Animated.sequence([
-        Animated.delay(i * 150),
-        Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.delay(i * 160),
+        Animated.timing(dot, { toValue: 1, duration: 280, useNativeDriver: true }),
+        Animated.timing(dot, { toValue: 0, duration: 280, useNativeDriver: true }),
       ]))
     );
     anims.forEach((a) => a.start());
     return () => anims.forEach((a) => a.stop());
   }, []);
   return (
-    <View style={{ flexDirection: 'row', gap: 4, padding: 4 }}>
+    <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 4, paddingHorizontal: 2 }}>
       {dots.map((dot, i) => (
-        <Animated.View key={i} style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.teal, opacity: dot }} />
+        <Animated.View
+          key={i}
+          style={{
+            width: 7, height: 7, borderRadius: 4,
+            backgroundColor: colors.teal,
+            opacity: dot,
+            transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+          }}
+        />
       ))}
+    </View>
+  );
+}
+
+// ── Bot avatar ────────────────────────────────────────────────────────────────
+
+function BotAvatar({ size = 36 }: { size?: number }) {
+  return (
+    <View style={{
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: colors.navyMid,
+      borderWidth: 1.5, borderColor: colors.teal + '60',
+      alignItems: 'center', justifyContent: 'center',
+      ...shadow.teal,
+    }}>
+      <Ionicons name="sparkles" size={size * 0.44} color={colors.teal} />
     </View>
   );
 }
@@ -142,26 +73,123 @@ function TypingDots() {
 
 function Bubble({ msg }: { msg: Message }) {
   const isUser = msg.role === 'user';
+  const time = msg.ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return (
-    <View style={{ flexDirection: 'row', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: 10, paddingHorizontal: spacing.md }}>
-      {!isUser && (
-        <View style={{ width: 34, height: 34, borderRadius: radius.full, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center', marginRight: 8, marginTop: 2, ...shadow.teal }}>
-          <Ionicons name="sparkles" size={16} color={colors.white} />
+    <View style={{
+      flexDirection: 'row',
+      justifyContent: isUser ? 'flex-end' : 'flex-start',
+      marginBottom: 14,
+      paddingHorizontal: spacing.md,
+      alignItems: 'flex-end',
+      gap: 8,
+    }}>
+      {!isUser && <BotAvatar />}
+      <View style={{ maxWidth: '76%' }}>
+        <View style={{
+          backgroundColor: isUser ? colors.teal : colors.navyMid,
+          borderRadius: radius.md,
+          borderBottomRightRadius: isUser ? 4 : radius.md,
+          borderBottomLeftRadius: isUser ? radius.md : 4,
+          paddingHorizontal: spacing.sm + 2,
+          paddingVertical: spacing.sm,
+          borderWidth: 1,
+          borderColor: isUser ? colors.tealLight + '40' : colors.glassBorder,
+          ...(isUser ? shadow.teal : shadow.sm),
+        }}>
+          <Text style={{
+            color: colors.white,
+            fontSize: 14,
+            lineHeight: 22,
+            fontWeight: isUser ? '600' : '400',
+          }}>
+            {msg.text}
+          </Text>
+        </View>
+        <Text style={{
+          color: colors.mutedLight,
+          fontSize: 10,
+          marginTop: 4,
+          textAlign: isUser ? 'right' : 'left',
+          paddingHorizontal: 4,
+        }}>
+          {time}
+        </Text>
+      </View>
+      {isUser && (
+        <View style={{
+          width: 30, height: 30, borderRadius: 15,
+          backgroundColor: colors.navyLight,
+          borderWidth: 1, borderColor: colors.glassBorder,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Feather name="user" size={14} color={colors.mutedLight} />
         </View>
       )}
-      <View style={{
-        maxWidth: '78%',
-        backgroundColor: isUser ? colors.navy : colors.white,
-        borderRadius: radius.md,
-        borderBottomRightRadius: isUser ? 4 : radius.md,
-        borderBottomLeftRadius: isUser ? radius.md : 4,
-        padding: spacing.sm,
-        borderWidth: isUser ? 0 : 1,
-        borderColor: colors.borderLight,
-        ...shadow.sm,
-      }}>
-        <Text style={{ color: isUser ? colors.white : colors.ink, fontSize: 14, lineHeight: 21 }}>{msg.text}</Text>
-      </View>
+    </View>
+  );
+}
+
+// ── Category chip row ─────────────────────────────────────────────────────────
+
+function CategoryChips({ onSelect }: { onSelect: (q: string) => void }) {
+  const [active, setActive] = useState<string | null>(null);
+  const activeData = QUICK_CATEGORIES.find((c) => c.label === active);
+
+  return (
+    <View style={{ backgroundColor: colors.navy, borderTopWidth: 1, borderTopColor: colors.glassBorder }}>
+      {/* Category pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: spacing.md, paddingVertical: 10, gap: 8 }}
+      >
+        {QUICK_CATEGORIES.map((cat) => {
+          const isActive = active === cat.label;
+          return (
+            <Pressable
+              key={cat.label}
+              onPress={() => setActive(isActive ? null : cat.label)}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 5,
+                backgroundColor: isActive ? cat.color : colors.navyMid,
+                borderRadius: radius.full,
+                paddingHorizontal: 14, paddingVertical: 7,
+                borderWidth: 1,
+                borderColor: isActive ? cat.color : colors.glassBorder,
+                ...(isActive ? { shadowColor: cat.color, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5 } : {}),
+              }}
+            >
+              <Text style={{ color: isActive ? colors.white : colors.mutedLight, fontSize: 12, fontWeight: '700' }}>
+                {cat.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Sub-questions for active category */}
+      {activeData && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: 10, gap: 8 }}
+        >
+          {activeData.questions.map((q) => (
+            <Pressable
+              key={q}
+              onPress={() => { onSelect(q); setActive(null); }}
+              style={{
+                backgroundColor: activeData.color + '18',
+                borderRadius: radius.full,
+                paddingHorizontal: 14, paddingVertical: 7,
+                borderWidth: 1, borderColor: activeData.color + '40',
+              }}
+            >
+              <Text style={{ color: activeData.color, fontSize: 12, fontWeight: '600' }}>{q}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -170,7 +198,10 @@ function Bubble({ msg }: { msg: Message }) {
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
-    { id: '0', role: 'bot', text: "Hi! 👋 I'm the Khetha FAQ assistant. Ask me anything about careers, qualifications, bursaries, NQF levels or how to use this app." },
+    {
+      id: '0', role: 'bot', ts: new Date(),
+      text: "Hi! 👋 I'm the Khetha FAQ assistant.\n\nI know about all 15 careers, 15 qualifications, 10 providers, 9 advisers, 6 events and 9 walk-in centres in the app.\n\nAsk me anything — or tap a category below to get started.",
+    },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
@@ -179,65 +210,133 @@ export default function Chatbot() {
   function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: trimmed };
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: trimmed, ts: new Date() };
     setMessages((m) => [...m, userMsg]);
     setInput('');
     setTyping(true);
     setTimeout(() => {
       const answer = findAnswer(trimmed);
       setTyping(false);
-      setMessages((m) => [...m, { id: Date.now().toString() + 'b', role: 'bot', text: answer }]);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    }, 900);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      setMessages((m) => [...m, { id: Date.now().toString() + 'b', role: 'bot', text: answer, ts: new Date() }]);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    }, 800 + Math.random() * 400);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
   }
 
+  const showSuggested = messages.length <= 1;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Stack.Screen options={{ title: 'Ask Khetha', headerStyle: { backgroundColor: colors.navy }, headerTintColor: colors.white, headerTitleStyle: { fontWeight: '800' } }} />
-
-      {/* Header info bar */}
-      <View style={{ backgroundColor: colors.teal + '18', paddingHorizontal: spacing.md, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderBottomColor: colors.teal + '22' }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.teal }} />
-        <Text style={{ color: colors.teal, fontSize: 12, fontWeight: '700' }}>Khetha FAQ Assistant · Always available</Text>
-      </View>
-
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={90}>
-
-        {/* Messages */}
-        <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingVertical: spacing.md }} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
-          {messages.map((m) => <Bubble key={m.id} msg={m} />)}
-          {typing && (
-            <View style={{ flexDirection: 'row', paddingHorizontal: spacing.md, marginBottom: 10 }}>
-              <View style={{ width: 34, height: 34, borderRadius: radius.full, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center', marginRight: 8, ...shadow.teal }}>
-                <Ionicons name="sparkles" size={16} color={colors.white} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy }}>
+      <Stack.Screen options={{
+        title: '',
+        headerStyle: { backgroundColor: colors.navy },
+        headerTintColor: colors.white,
+        headerShadowVisible: false,
+        headerLeft: () => null,
+        headerTitle: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <BotAvatar size={32} />
+            <View>
+              <Text style={{ color: colors.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.2 }}>
+                Ask Khetha
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.teal }} />
+                <Text style={{ color: colors.teal, fontSize: 11, fontWeight: '600' }}>
+                  Always available
+                </Text>
               </View>
-              <View style={{ backgroundColor: colors.white, borderRadius: radius.md, borderBottomLeftRadius: 4, padding: spacing.sm, ...shadow.sm }}>
+            </View>
+          </View>
+        ),
+      }} />
+
+      {/* Ambient glow orb */}
+      <View style={{
+        position: 'absolute', top: -40, right: -40,
+        width: 180, height: 180, borderRadius: 90,
+        backgroundColor: colors.tealGlow,
+      }} pointerEvents="none" />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={90}
+      >
+        {/* Messages */}
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: spacing.sm }}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        >
+          {messages.map((m) => <Bubble key={m.id} msg={m} />)}
+
+          {/* Typing indicator */}
+          {typing && (
+            <View style={{ flexDirection: 'row', paddingHorizontal: spacing.md, marginBottom: 14, alignItems: 'flex-end', gap: 8 }}>
+              <BotAvatar />
+              <View style={{
+                backgroundColor: colors.navyMid,
+                borderRadius: radius.md, borderBottomLeftRadius: 4,
+                paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm,
+                borderWidth: 1, borderColor: colors.glassBorder,
+                ...shadow.sm,
+              }}>
                 <TypingDots />
+              </View>
+            </View>
+          )}
+
+          {/* Suggested questions on first load */}
+          {showSuggested && (
+            <View style={{ paddingHorizontal: spacing.md, marginTop: 4 }}>
+              <Text style={{ color: colors.mutedLight, fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                Suggested
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {SUGGESTED_QUESTIONS.map((q) => (
+                  <Pressable
+                    key={q}
+                    onPress={() => send(q)}
+                    style={{
+                      backgroundColor: colors.navyMid,
+                      borderRadius: radius.full,
+                      paddingHorizontal: 13, paddingVertical: 7,
+                      borderWidth: 1, borderColor: colors.glassBorder,
+                    }}
+                  >
+                    <Text style={{ color: colors.mutedLight, fontSize: 12, fontWeight: '600' }}>{q}</Text>
+                  </Pressable>
+                ))}
               </View>
             </View>
           )}
         </ScrollView>
 
-        {/* Suggested questions */}
-        {messages.length <= 2 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.md, paddingVertical: 8, gap: 8 }}>
-            {SUGGESTED.map((q) => (
-              <Pressable key={q} onPress={() => send(q)} style={{ backgroundColor: colors.white, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1.5, borderColor: colors.border, ...shadow.sm }}>
-                <Text style={{ color: colors.navy, fontSize: 13, fontWeight: '600' }}>{q}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
+        {/* Category chips */}
+        <CategoryChips onSelect={send} />
 
         {/* Input bar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: spacing.sm, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border }}>
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+          paddingHorizontal: spacing.md, paddingVertical: 10,
+          backgroundColor: colors.navyMid,
+          borderTopWidth: 1, borderTopColor: colors.glassBorder,
+        }}>
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder="Ask a question…"
-            placeholderTextColor={colors.muted}
-            style={{ flex: 1, backgroundColor: colors.bg, borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: colors.ink, borderWidth: 1, borderColor: colors.border }}
+            placeholder="Ask anything about careers…"
+            placeholderTextColor={colors.mutedLight}
+            style={{
+              flex: 1,
+              backgroundColor: colors.navy,
+              borderRadius: radius.full,
+              paddingHorizontal: 18, paddingVertical: 11,
+              fontSize: 14, color: colors.white,
+              borderWidth: 1, borderColor: colors.glassBorder,
+            }}
             onSubmitEditing={() => send(input)}
             returnKeyType="send"
             accessibilityLabel="Type your question"
@@ -245,11 +344,16 @@ export default function Chatbot() {
           <Pressable
             onPress={() => send(input)}
             disabled={!input.trim()}
-            style={{ width: 44, height: 44, borderRadius: radius.full, backgroundColor: input.trim() ? colors.teal : colors.border, alignItems: 'center', justifyContent: 'center' }}
+            style={{
+              width: 46, height: 46, borderRadius: 23,
+              backgroundColor: input.trim() ? colors.teal : colors.navyLight,
+              alignItems: 'center', justifyContent: 'center',
+              ...(input.trim() ? shadow.teal : {}),
+            }}
             accessibilityRole="button"
             accessibilityLabel="Send message"
           >
-            <Text style={{ color: colors.white, fontSize: 18 }}>↑</Text>
+            <Feather name="send" size={18} color={input.trim() ? colors.white : colors.mutedLight} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
