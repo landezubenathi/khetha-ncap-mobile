@@ -4,6 +4,7 @@ import { colors, spacing } from '../../src/theme';
 import { useUserStore } from '../../src/store/user';
 import { CAREERS, QUALIFICATIONS } from '../../src/data/seed';
 import QualCard from '../../src/components/QualCard';
+import { notifySaved } from '../../src/lib/notifications';
 
 const FIELD_COLORS: Record<string, string> = {
   Health: colors.teal, Technology: colors.blue, Business: '#7B61FF',
@@ -143,7 +144,10 @@ export default function CareerDetail() {
 
         {/* Save */}
         <Pressable
-          onPress={() => toggleSaved(career.id)}
+          onPress={() => {
+            toggleSaved(career.id);
+            if (!isSaved) notifySaved(career.title, 'career');
+          }}
           style={{ backgroundColor: isSaved ? colors.border : colors.navy, borderRadius: 14, padding: 18, alignItems: 'center', minHeight: 56, justifyContent: 'center' }}
           accessibilityRole="button"
           accessibilityLabel={isSaved ? 'Remove from saved' : 'Save this career'}

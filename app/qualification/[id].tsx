@@ -3,6 +3,7 @@ import { Link, useLocalSearchParams, router } from 'expo-router';
 import { colors, spacing } from '../../src/theme';
 import { QUALIFICATIONS, PROVIDERS } from '../../src/data/seed';
 import { useUserStore } from '../../src/store/user';
+import { notifySaved } from '../../src/lib/notifications';
 
 const FIELD_COLORS: Record<string, string> = {
   Health: colors.teal, Technology: colors.blue, Business: '#7B61FF',
@@ -99,7 +100,10 @@ export default function QualificationDetail() {
 
         {/* Save */}
         <Pressable
-          onPress={() => toggleSaved(qual.id)}
+          onPress={() => {
+            toggleSaved(qual.id);
+            if (!isSaved) notifySaved(qual.title, 'qualification');
+          }}
           style={{ backgroundColor: isSaved ? colors.border : colors.navy, borderRadius: 14, padding: 18, alignItems: 'center', minHeight: 56, justifyContent: 'center' }}
           accessibilityRole="button"
         >

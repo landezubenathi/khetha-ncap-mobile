@@ -6,7 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/theme';
 import { supabase } from '../src/lib/supabase';
 import { useUserStore } from '../src/store/user';
-import { setupNotificationHandler, cancelJourneyReminder, registerForPushNotifications, scheduleQuizNudge, scheduleJourneyReminder, scheduleStreakLapse, scheduleApplicationSeasonAlert } from '../src/lib/notifications';
+import { setupNotificationHandler, cancelJourneyReminder, registerForPushNotifications, scheduleQuizNudge, scheduleJourneyReminder, scheduleStreakLapse, scheduleUniversityApplicationAlerts, scheduleBursaryReminders, scheduleEventReminders, scheduleWeeklyDigest } from '../src/lib/notifications';
+import { EVENTS } from '../src/data/seed';
 import { OfflineBanner } from '../src/lib/connectivity.tsx';
 
 const client = new QueryClient({
@@ -40,7 +41,10 @@ export default function RootLayout() {
     else cancelJourneyReminder();
 
     scheduleStreakLapse(streakDays);
-    scheduleApplicationSeasonAlert();
+    scheduleUniversityApplicationAlerts();
+    scheduleBursaryReminders();
+    scheduleEventReminders(EVENTS);
+    scheduleWeeklyDigest();
   }, []);
 
   // Supabase auth state listener
