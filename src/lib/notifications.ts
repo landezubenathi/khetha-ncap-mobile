@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
+import { useUserStore } from '../store/user';
 
 const isNative = Platform.OS !== 'web';
+
+function addInApp(title: string, body: string, icon: string, category: any, route?: string) {
+  useUserStore.getState().addNotification({ title, body, icon, category, route });
+}
 
 async function N() {
   if (!isNative) return null;
@@ -102,19 +107,22 @@ async function schedule(
 
 // ── 1. Saved item alert — fires immediately when user saves something ──────────
 export async function notifySaved(itemTitle: string, itemType: 'career' | 'qualification' | 'provider'): Promise<void> {
-  const Notifications = await N();
-  if (!Notifications) return;
   const icons: Record<string, string> = { career: '💼', qualification: '🎓', provider: '🏫' };
   const icon = icons[itemType] ?? '🔖';
+  const title = `${icon} Saved to your shortlist`;
+  const body = `"${itemTitle}" has been added. Tap to set a deadline or add a note.`;
+  addInApp(title, body, icon, 'saved', '/(tabs)/saved');
+  const Notifications = await N();
+  if (!Notifications) return;
   await Notifications.scheduleNotificationAsync({
     identifier: `saved-${Date.now()}`,
     content: {
-      title: `${icon} Saved to your shortlist`,
-      body: `"${itemTitle}" has been added. Tap to set a deadline or add a note.`,
+      title,
+      body,
       data: { route: '/(tabs)/saved' },
       ...(Platform.OS === 'android' ? { channelId: 'deadlines' } : {}),
     },
-    trigger: null, // immediate
+    trigger: null,
   });
 }
 
@@ -156,125 +164,67 @@ export async function cancelDeadlineReminder(itemId: string): Promise<void> {
 }
 
 // ── 3. University application season alerts ───────────────────────────────────
-// South African universities typically open April and close September
 export async function scheduleUniversityApplicationAlerts(): Promise<void> {
   const now = new Date();
-  const year = now.getFullYear() + (now.getMonth() >= 9 ? 1 : 0); // next cycle if past Sept
+  const year = now.getFullYear() + (now.getMonth() >= 9 ? 1 : 0);
 
-  // Opening alert — 1 April
   const openDate = new Date(year, 3, 1, 8, 0, 0);
   if (openDate > now) {
-    await schedule(
-      'uni-apps-open',
-      '🎓 University applications are now open!',
-      `Apply for ${year + 1} — check your saved qualifications and providers before deadlines fill up.`,
-      { date: openDate },
-      { route: '/(tabs)/saved' },
-      'applications',
-    );
+    addInApp('🎓 University applications are now open!', `Apply for ${year + 1} — check your saved qualifications and providers before deadlines fill up.`, '🎓', 'application', '/(tabs)/saved');
+    await schedule('uni-apps-open', '🎓 University applications are now open!', `Apply for ${year + 1} — check your saved qualifications and providers before deadlines fill up.`, { date: openDate }, { route: '/(tabs)/saved' }, 'applications');
   }
 
-  // Mid-season reminder — 1 July
   const midDate = new Date(year, 6, 1, 8, 0, 0);
   if (midDate > now) {
-    await schedule(
-      'uni-apps-mid',
-      '📋 University applications: halfway through',
-      'Most universities close in September. Have you submitted your applications yet?',
-      { date: midDate },
-      { route: '/(tabs)/explore' },
-      'applications',
-    );
+    addInApp('📋 University applications: halfway through', 'Most universities close in September. Have you submitted your applications yet?', '📋', 'application', '/(tabs)/explore');
+    await schedule('uni-apps-mid', '📋 University applications: halfway through', 'Most universities close in September. Have you submitted your applications yet?', { date: midDate }, { route: '/(tabs)/explore' }, 'applications');
   }
 
-  // Closing warning — 1 September
   const closeDate = new Date(year, 8, 1, 8, 0, 0);
   if (closeDate > now) {
-    await schedule(
-      'uni-apps-closing',
-      '🚨 University applications closing soon!',
-      'Most universities close in September. Submit your applications now — don\'t miss out.',
-      { date: closeDate },
-      { route: '/(tabs)/saved' },
-      'applications',
-    );
+    addInApp('🚨 University applications closing soon!', "Most universities close in September. Submit your applications now — don't miss out.", '🚨', 'application', '/(tabs)/saved');
+    await schedule('uni-apps-closing', '🚨 University applications closing soon!', "Most universities close in September. Submit your applications now — don't miss out.", { date: closeDate }, { route: '/(tabs)/saved' }, 'applications');
   }
 
-  // TVET rolling admissions reminder — 1 February
   const tvetYear = now.getFullYear() + (now.getMonth() >= 1 ? 1 : 0);
   const tvetDate = new Date(tvetYear, 1, 1, 8, 0, 0);
   if (tvetDate > now) {
-    await schedule(
-      'tvet-apps',
-      '🔧 TVET College applications open',
-      'TVET colleges accept applications year-round. Explore programmes in the Explore tab.',
-      { date: tvetDate },
-      { route: '/(tabs)/explore' },
-      'applications',
-    );
+    addInApp('🔧 TVET College applications open', 'TVET colleges accept applications year-round. Explore programmes in the Explore tab.', '🔧', 'application', '/(tabs)/explore');
+    await schedule('tvet-apps', '🔧 TVET College applications open', 'TVET colleges accept applications year-round. Explore programmes in the Explore tab.', { date: tvetDate }, { route: '/(tabs)/explore' }, 'applications');
   }
 }
 
 // ── 4. Bursary season reminders ───────────────────────────────────────────────
-// NSFAS opens ~August, most private bursaries open April–August
 export async function scheduleBursaryReminders(): Promise<void> {
   const now = new Date();
   const year = now.getFullYear() + (now.getMonth() >= 10 ? 1 : 0);
 
-  // NSFAS opens — 1 August
   const nsfasOpen = new Date(year, 7, 1, 8, 0, 0);
   if (nsfasOpen > now) {
-    await schedule(
-      'nsfas-open',
-      '💰 NSFAS applications are open!',
-      'Apply for NSFAS funding at nsfas.org.za — free university and TVET funding for qualifying students.',
-      { date: nsfasOpen },
-      { route: '/chatbot' },
-      'bursaries',
-    );
+    addInApp('💰 NSFAS applications are open!', 'Apply for NSFAS funding at nsfas.org.za — free university and TVET funding for qualifying students.', '💰', 'bursary', '/chatbot');
+    await schedule('nsfas-open', '💰 NSFAS applications are open!', 'Apply for NSFAS funding at nsfas.org.za — free university and TVET funding for qualifying students.', { date: nsfasOpen }, { route: '/chatbot' }, 'bursaries');
   }
 
-  // NSFAS closing warning — 15 November
   const nsfasClose = new Date(year, 10, 15, 8, 0, 0);
   if (nsfasClose > now) {
-    await schedule(
-      'nsfas-closing',
-      '⏰ NSFAS closing soon — apply now!',
-      'NSFAS applications close in November. Don\'t miss free funding for your studies.',
-      { date: nsfasClose },
-      { route: '/chatbot' },
-      'bursaries',
-    );
+    addInApp('⏰ NSFAS closing soon — apply now!', "NSFAS applications close in November. Don't miss free funding for your studies.", '⏰', 'bursary', '/chatbot');
+    await schedule('nsfas-closing', '⏰ NSFAS closing soon — apply now!', "NSFAS applications close in November. Don't miss free funding for your studies.", { date: nsfasClose }, { route: '/chatbot' }, 'bursaries');
   }
 
-  // Private bursaries reminder — 1 April
   const bursaryOpen = new Date(year, 3, 1, 8, 0, 0);
   if (bursaryOpen > now) {
-    await schedule(
-      'bursaries-open',
-      '🏆 Bursary season has started',
-      'Many companies and government departments open bursary applications in April. Ask Khetha for guidance.',
-      { date: bursaryOpen },
-      { route: '/chatbot' },
-      'bursaries',
-    );
+    addInApp('🏆 Bursary season has started', 'Many companies and government departments open bursary applications in April. Ask Khetha for guidance.', '🏆', 'bursary', '/chatbot');
+    await schedule('bursaries-open', '🏆 Bursary season has started', 'Many companies and government departments open bursary applications in April. Ask Khetha for guidance.', { date: bursaryOpen }, { route: '/chatbot' }, 'bursaries');
   }
 
-  // Mid-year bursary nudge — 1 June
   const bursaryMid = new Date(year, 5, 1, 8, 0, 0);
   if (bursaryMid > now) {
-    await schedule(
-      'bursaries-mid',
-      '📚 Have you applied for a bursary?',
-      'Bursaries from SETAs, government and private companies are still open. Speak to a Khetha adviser.',
-      { date: bursaryMid },
-      { route: '/contact' },
-      'bursaries',
-    );
+    addInApp('📚 Have you applied for a bursary?', 'Bursaries from SETAs, government and private companies are still open. Speak to a Khetha adviser.', '📚', 'bursary', '/contact');
+    await schedule('bursaries-mid', '📚 Have you applied for a bursary?', 'Bursaries from SETAs, government and private companies are still open. Speak to a Khetha adviser.', { date: bursaryMid }, { route: '/contact' }, 'bursaries');
   }
 }
 
-// ── 5. Event reminders — 2 days before each event ────────────────────────────
+// ── 5. Event reminders ────────────────────────────────────────────────────────
 export async function scheduleEventReminders(
   events: Array<{ id: string; title: string; date: string; venue: string; province: string }>,
 ): Promise<void> {
@@ -282,69 +232,40 @@ export async function scheduleEventReminders(
     const eventMs = new Date(event.date).getTime();
     const twoDaysBefore = eventMs - 2 * 24 * 60 * 60 * 1000;
     const oneDayBefore  = eventMs - 1 * 24 * 60 * 60 * 1000;
+    const dateLabel = new Date(event.date).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' });
 
     if (twoDaysBefore > Date.now()) {
-      await schedule(
-        `event-2d-${event.id}`,
-        `📅 Khetha event in 2 days`,
-        `"${event.title}" is on ${new Date(event.date).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })} at ${event.venue}.`,
-        { date: new Date(twoDaysBefore) },
-        { route: '/contact' },
-        'events',
-      );
+      addInApp(`📅 Khetha event in 2 days`, `"${event.title}" is on ${dateLabel} at ${event.venue}.`, '📅', 'event', '/contact');
+      await schedule(`event-2d-${event.id}`, `📅 Khetha event in 2 days`, `"${event.title}" is on ${dateLabel} at ${event.venue}.`, { date: new Date(twoDaysBefore) }, { route: '/contact' }, 'events');
     }
     if (oneDayBefore > Date.now()) {
-      await schedule(
-        `event-1d-${event.id}`,
-        `🔔 Khetha event TOMORROW`,
-        `"${event.title}" is tomorrow at ${event.venue}. Don't miss it!`,
-        { date: new Date(oneDayBefore) },
-        { route: '/contact' },
-        'events',
-      );
+      addInApp(`🔔 Khetha event TOMORROW`, `"${event.title}" is tomorrow at ${event.venue}. Don't miss it!`, '🔔', 'event', '/contact');
+      await schedule(`event-1d-${event.id}`, `🔔 Khetha event TOMORROW`, `"${event.title}" is tomorrow at ${event.venue}. Don't miss it!`, { date: new Date(oneDayBefore) }, { route: '/contact' }, 'events');
     }
   }
 }
 
-// ── 6. Quiz nudge — 3 days after install if no quiz taken ────────────────────
+// ── 6. Quiz nudge ─────────────────────────────────────────────────────────────
 export async function scheduleQuizNudge(): Promise<void> {
-  await schedule(
-    'quiz-nudge',
-    'Discover your career path 🎯',
-    'Take the Career Choice quiz — it only takes 5 minutes and gives you personalised matches.',
-    { seconds: 60 * 60 * 24 * 3, repeats: false },
-    { route: '/questionnaire/career' },
-    'journey',
-  );
+  addInApp('Discover your career path 🎯', 'Take the Career Choice quiz — it only takes 5 minutes and gives you personalised matches.', '🎯', 'journey', '/questionnaire/career');
+  await schedule('quiz-nudge', 'Discover your career path 🎯', 'Take the Career Choice quiz — it only takes 5 minutes and gives you personalised matches.', { seconds: 60 * 60 * 24 * 3, repeats: false }, { route: '/questionnaire/career' }, 'journey');
 }
 
-// ── 7. Journey re-engagement — 7 days without opening ────────────────────────
+// ── 7. Journey re-engagement ──────────────────────────────────────────────────
 export async function scheduleJourneyReminder(): Promise<void> {
-  await schedule(
-    'journey-reminder',
-    'Your career journey is waiting 🗺️',
-    'You have saved careers to explore. Pick up where you left off.',
-    { seconds: 60 * 60 * 24 * 7, repeats: false },
-    { route: '/(tabs)/journey' },
-    'journey',
-  );
+  addInApp('Your career journey is waiting 🗺️', 'You have saved careers to explore. Pick up where you left off.', '🗺️', 'journey', '/(tabs)/journey');
+  await schedule('journey-reminder', 'Your career journey is waiting 🗺️', 'You have saved careers to explore. Pick up where you left off.', { seconds: 60 * 60 * 24 * 7, repeats: false }, { route: '/(tabs)/journey' }, 'journey');
 }
 
 export async function cancelJourneyReminder(): Promise<void> {
   await cancel('journey-reminder');
 }
 
-// ── 8. Streak lapse — 48 hours without opening ───────────────────────────────
+// ── 8. Streak lapse ───────────────────────────────────────────────────────────
 export async function scheduleStreakLapse(streakDays: number): Promise<void> {
   if (streakDays < 2) return;
-  await schedule(
-    'streak-lapse',
-    `Keep your ${streakDays}-day streak alive 🔥`,
-    'Open Khetha today to stay on track with your career journey.',
-    { seconds: 60 * 60 * 48, repeats: false },
-    { route: '/(tabs)/journey' },
-    'journey',
-  );
+  addInApp(`Keep your ${streakDays}-day streak alive 🔥`, 'Open Khetha today to stay on track with your career journey.', '🔥', 'journey', '/(tabs)/journey');
+  await schedule('streak-lapse', `Keep your ${streakDays}-day streak alive 🔥`, 'Open Khetha today to stay on track with your career journey.', { seconds: 60 * 60 * 48, repeats: false }, { route: '/(tabs)/journey' }, 'journey');
 }
 
 // ── 9. Weekly digest — every Monday at 09:00 ─────────────────────────────────

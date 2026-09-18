@@ -1,8 +1,8 @@
 import { Link, router } from 'expo-router';
 import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, shadow } from '../../src/theme';
-import { useUserStore, useJourneyStage, useJourneyProgress, useResultByType } from '../../src/store/user';
+import { useUserStore, useJourneyStage, useJourneyProgress, useResultByType, useUnreadCount } from '../../src/store/user';
 import { useT } from '../../src/i18n';
 import { CAREERS } from '../../src/data/seed';
 
@@ -31,6 +31,7 @@ export default function Home() {
   const progress = useJourneyProgress();
   const careerResult = useResultByType('career');
   const jobFitResult = useResultByType('job-fit');
+  const unreadCount = useUnreadCount();
   const hero = HERO[stage] ?? HERO['profile'];
   const topCareer = careerResult ? CAREERS.find((c) => c.id === careerResult.careers[0]?.id) : null;
 
@@ -52,17 +53,36 @@ export default function Home() {
           <View style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: colors.tealGlow }} />
           <View style={{ position: 'absolute', bottom: 0, left: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: colors.blueGlow }} />
 
-          {/* Logos */}
+          {/* Logos + Bell */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
             <Image source={require('../../assets/khetha_logo.png')} style={{ height: 44, width: 120 }} resizeMode="contain" />
-            <View style={{
-              backgroundColor: colors.white,
-              borderRadius: radius.md,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              ...shadow.sm,
-            }}>
-              <Image source={require('../../assets/DHET-FC-logo.png')} style={{ height: 40, width: 90 }} resizeMode="contain" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* Bell icon */}
+              <Pressable
+                onPress={() => router.push('/notifications' as any)}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.glassMid, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.glassBorder }}
+                accessibilityRole="button"
+                accessibilityLabel="Notifications"
+              >
+                <Feather name="bell" size={18} color={colors.white} />
+                {unreadCount > 0 && (
+                  <View style={{
+                    position: 'absolute', top: 6, right: 6,
+                    width: 8, height: 8, borderRadius: 4,
+                    backgroundColor: colors.yellow,
+                    borderWidth: 1.5, borderColor: colors.navy,
+                  }} />
+                )}
+              </Pressable>
+              <View style={{
+                backgroundColor: colors.white,
+                borderRadius: radius.md,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                ...shadow.sm,
+              }}>
+                <Image source={require('../../assets/DHET-FC-logo.png')} style={{ height: 40, width: 90 }} resizeMode="contain" />
+              </View>
             </View>
           </View>
 

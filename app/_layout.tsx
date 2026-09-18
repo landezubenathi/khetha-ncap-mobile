@@ -84,6 +84,7 @@ export default function RootLayout() {
         <Stack.Screen name="accessibility"        options={{ title: 'Accessibility' }} />
         <Stack.Screen name="chatbot"              options={{ headerShown: false }} />
         <Stack.Screen name="advisor"              options={{ headerShown: false }} />
+        <Stack.Screen name="notifications"        options={{ headerShown: false }} />
       </Stack>
       </View>
     </QueryClientProvider>
