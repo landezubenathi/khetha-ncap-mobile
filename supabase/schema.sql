@@ -1,19 +1,171 @@
--- Khetha NCAP Supabase schema. Run in Supabase SQL Editor.
+-- ============================================================
+-- Khetha NCAP — Supabase Schema
+-- Run this in the Supabase SQL Editor (Dashboard → SQL Editor)
+-- ============================================================
+
+-- ── Extensions ───────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
-create table if not exists profiles (id uuid primary key references auth.users(id) on delete cascade, full_name text, language text default 'English', province text, accessibility_needs text[], consent_at timestamptz, created_at timestamptz default now());
-create table if not exists careers (id uuid primary key default uuid_generate_v4(), slug text unique not null, title text not null, description text, skills text[], subjects text[], education_path text, salary_range text, created_at timestamptz default now());
-create table if not exists qualifications (id uuid primary key default uuid_generate_v4(), title text not null, description text, nqf_level text, duration text, field text, provider_id uuid, created_at timestamptz default now());
-create table if not exists providers (id uuid primary key default uuid_generate_v4(), name text not null, provider_type text, province text, city text, address text, website text, phone text, latitude numeric, longitude numeric, created_at timestamptz default now());
-alter table qualifications add constraint qualifications_provider_fk foreign key (provider_id) references providers(id) on delete set null;
-create table if not exists assessments (id uuid primary key default uuid_generate_v4(), user_id uuid references auth.users(id) on delete cascade, type text check (type in ('subjects','career','job-fit')), score numeric, result jsonb, created_at timestamptz default now());
-create table if not exists assessment_answers (id uuid primary key default uuid_generate_v4(), assessment_id uuid references assessments(id) on delete cascade, question_key text not null, answer jsonb not null);
-create table if not exists favourites (user_id uuid references auth.users(id) on delete cascade, item_type text check (item_type in ('career','qualification','provider')), item_id uuid not null, created_at timestamptz default now(), primary key (user_id,item_type,item_id));
-create table if not exists notifications (id uuid primary key default uuid_generate_v4(), user_id uuid references auth.users(id) on delete cascade, title text not null, body text not null, read_at timestamptz, scheduled_for timestamptz, created_at timestamptz default now());
-alter table profiles enable row level security; alter table assessments enable row level security; alter table assessment_answers enable row level security; alter table favourites enable row level security; alter table notifications enable row level security;
-create policy "users manage own profile" on profiles for all using (auth.uid() = id) with check (auth.uid() = id);
-create policy "users manage own assessments" on assessments for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "users manage own answers" on assessment_answers for all using (exists (select 1 from assessments a where a.id=assessment_id and a.user_id=auth.uid())) with check (exists (select 1 from assessments a where a.id=assessment_id and a.user_id=auth.uid()));
-create policy "users manage own favourites" on favourites for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "users read own notifications" on notifications for select using (auth.uid() = user_id);
-create policy "public read careers" on careers for select using (true); create policy "public read qualifications" on qualifications for select using (true); create policy "public read providers" on providers for select using (true);
-insert into careers (slug,title,description,skills,subjects,education_path) values ('health-scientist','Health Scientist','Research and improve health outcomes for communities.',ARRAY['Research','Communication','Analysis'],ARRAY['Mathematics','Life Sciences','Physical Sciences'],'Diploma or degree'),('software-developer','Software Developer','Build digital products that solve real problems.',ARRAY['Logic','Creativity','Problem solving'],ARRAY['Mathematics','Information Technology'],'Diploma, degree or learnership') on conflict (slug) do nothing;
+
+-- ── profiles ─────────────────────────────────────────────────
+create table if not exists profiles (
+  id                uuid primary key references auth.users(id) on delete cascade,
+  language          text not null default 'English',
+  province          text not null default '',
+  grade             text not null default '',
+  consent_version   int  not null default 0,
+  push_token        text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+alter table profiles enable row level security;
+
+create policy "Users can read own profile"
+  on profiles for select using (auth.uid() = id);
+
+create policy "Users can upsert own profile"
+  on profiles for insert with check (auth.uid() = id);
+
+create policy "Users can update own profile"
+  on profiles for update using (auth.uid() = id);
+
+create policy "Users can delete own profile"
+  on profiles for delete using (auth.uid() = id);
+
+-- Auto-update updated_at
+create or replace function update_updated_at()
+returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end;
+$$;
+
+create trigger profiles_updated_at
+  before update on profiles
+  for each row execute function update_updated_at();
+
+-- ── assessments ──────────────────────────────────────────────
+-- One row per user per quiz type — upsert on (user_id, type)
+create table if not exists assessments (
+  id           uuid primary key default uuid_generate_v4(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  type         text not null check (type in ('career', 'job-fit', 'subjects')),
+  answers      jsonb not null default '{}',
+  careers      jsonb not null default '[]',
+  completed_at timestamptz not null default now(),
+  unique (user_id, type)   -- deduplication constraint
+);
+
+alter table assessments enable row level security;
+
+create policy "Users can read own assessments"
+  on assessments for select using (auth.uid() = user_id);
+
+create policy "Users can upsert own assessments"
+  on assessments for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own assessments"
+  on assessments for update using (auth.uid() = user_id);
+
+create policy "Users can delete own assessments"
+  on assessments for delete using (auth.uid() = user_id);
+
+-- ── assessment_answers ────────────────────────────────────────
+create table if not exists assessment_answers (
+  id             uuid primary key default uuid_generate_v4(),
+  assessment_id  uuid not null references assessments(id) on delete cascade,
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  question_key   text not null,
+  answer         int  not null check (answer between 0 and 3),
+  unique (assessment_id, question_key)
+);
+
+alter table assessment_answers enable row level security;
+
+create policy "Users can read own answers"
+  on assessment_answers for select using (auth.uid() = user_id);
+
+create policy "Users can insert own answers"
+  on assessment_answers for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete own answers"
+  on assessment_answers for delete using (auth.uid() = user_id);
+
+-- ── saved_items ───────────────────────────────────────────────
+-- Careers, qualifications and providers saved by the user
+create table if not exists saved_items (
+  id         uuid primary key default uuid_generate_v4(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  item_id    text not null,
+  item_type  text not null check (item_type in ('career', 'qualification', 'provider')),
+  note       text not null default '',
+  deadline   text not null default '',   -- ISO date string
+  notify_me  boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, item_id)              -- deduplication constraint
+);
+
+alter table saved_items enable row level security;
+
+create policy "Users can read own saved items"
+  on saved_items for select using (auth.uid() = user_id);
+
+create policy "Users can upsert own saved items"
+  on saved_items for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own saved items"
+  on saved_items for update using (auth.uid() = user_id);
+
+create policy "Users can delete own saved items"
+  on saved_items for delete using (auth.uid() = user_id);
+
+create trigger saved_items_updated_at
+  before update on saved_items
+  for each row execute function update_updated_at();
+
+-- ── consent_log ───────────────────────────────────────────────
+-- Append-only audit trail — never update or delete rows
+create table if not exists consent_log (
+  id                  uuid primary key default uuid_generate_v4(),
+  user_id             uuid not null references auth.users(id) on delete cascade,
+  version             int  not null,
+  data_storage        boolean not null,
+  push_notifications  boolean not null,
+  analytics           boolean not null,
+  action              text not null check (action in ('granted', 'withdrawn')),
+  ip_hash             text,              -- SHA-256 of IP, for audit only
+  created_at          timestamptz not null default now()
+);
+
+alter table consent_log enable row level security;
+
+-- Users can read their own consent history
+create policy "Users can read own consent log"
+  on consent_log for select using (auth.uid() = user_id);
+
+-- Users can insert (grant/withdraw) — but never update or delete
+create policy "Users can insert consent log"
+  on consent_log for insert with check (auth.uid() = user_id);
+
+-- ── sync_queue ────────────────────────────────────────────────
+-- Server-side mirror of the client offline sync queue
+create table if not exists sync_queue (
+  id              uuid primary key default uuid_generate_v4(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  table_name      text not null,
+  payload         jsonb not null,
+  conflict_column text not null,
+  status          text not null default 'pending' check (status in ('pending', 'synced', 'failed')),
+  created_at      timestamptz not null default now(),
+  synced_at       timestamptz
+);
+
+alter table sync_queue enable row level security;
+
+create policy "Users can manage own sync queue"
+  on sync_queue for all using (auth.uid() = user_id);
+
+-- ── Indexes ───────────────────────────────────────────────────
+create index if not exists idx_assessments_user    on assessments (user_id);
+create index if not exists idx_saved_items_user    on saved_items (user_id);
+create index if not exists idx_consent_log_user    on consent_log (user_id);
+create index if not exists idx_sync_queue_user     on sync_queue (user_id, status);

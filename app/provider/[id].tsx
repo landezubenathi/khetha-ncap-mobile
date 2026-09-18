@@ -3,6 +3,7 @@ import { Link, useLocalSearchParams, router } from 'expo-router';
 import { colors, spacing } from '../../src/theme';
 import { PROVIDERS, QUALIFICATIONS } from '../../src/data/seed';
 import { useUserStore } from '../../src/store/user';
+import { notifySaved } from '../../src/lib/notifications';
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   'University':               { bg: colors.blue + '18',   text: colors.blue },
@@ -109,7 +110,10 @@ export default function ProviderDetail() {
 
         {/* Save */}
         <Pressable
-          onPress={() => toggleSaved(provider.id)}
+          onPress={() => {
+            toggleSaved(provider.id);
+            if (!isSaved) notifySaved(provider.name, 'provider');
+          }}
           style={{ backgroundColor: isSaved ? colors.border : colors.navy, borderRadius: 14, padding: 18, alignItems: 'center', minHeight: 56, justifyContent: 'center' }}
           accessibilityRole="button"
         >

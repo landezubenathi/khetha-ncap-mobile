@@ -6,7 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/theme';
 import { supabase } from '../src/lib/supabase';
 import { useUserStore } from '../src/store/user';
-import { setupNotificationHandler, cancelJourneyReminder, registerForPushNotifications, scheduleQuizNudge, scheduleJourneyReminder, scheduleStreakLapse, scheduleApplicationSeasonAlert } from '../src/lib/notifications';
+import { setupNotificationHandler, cancelJourneyReminder, registerForPushNotifications, scheduleQuizNudge, scheduleJourneyReminder, scheduleStreakLapse, scheduleUniversityApplicationAlerts, scheduleBursaryReminders, scheduleEventReminders, scheduleWeeklyDigest } from '../src/lib/notifications';
+import { EVENTS } from '../src/data/seed';
 import { OfflineBanner } from '../src/lib/connectivity.tsx';
 
 const client = new QueryClient({
@@ -40,7 +41,10 @@ export default function RootLayout() {
     else cancelJourneyReminder();
 
     scheduleStreakLapse(streakDays);
-    scheduleApplicationSeasonAlert();
+    scheduleUniversityApplicationAlerts();
+    scheduleBursaryReminders();
+    scheduleEventReminders(EVENTS);
+    scheduleWeeklyDigest();
   }, []);
 
   // Supabase auth state listener
@@ -71,13 +75,16 @@ export default function RootLayout() {
         <Stack.Screen name="auth"                options={{ headerShown: false }} />
         <Stack.Screen name="consent"             options={{ headerShown: false }} />
         <Stack.Screen name="results"             options={{ title: 'Your matches' }} />
-        <Stack.Screen name="contact"             options={{ title: 'Get advice' }} />
+        <Stack.Screen name="contact"             options={{ title: 'Get Advice' }} />
         <Stack.Screen name="subject-chooser"      options={{ title: 'Subject Chooser' }} />
         <Stack.Screen name="questionnaire/[type]" options={{ title: 'Career quiz' }} />
         <Stack.Screen name="career/[id]"         options={{ title: 'Career details' }} />
         <Stack.Screen name="qualification/[id]"  options={{ title: 'Qualification' }} />
         <Stack.Screen name="provider/[id]"       options={{ title: 'Provider' }} />
         <Stack.Screen name="accessibility"        options={{ title: 'Accessibility' }} />
+        <Stack.Screen name="chatbot"              options={{ headerShown: false }} />
+        <Stack.Screen name="advisor"              options={{ headerShown: false }} />
+        <Stack.Screen name="notifications"        options={{ headerShown: false }} />
       </Stack>
       </View>
     </QueryClientProvider>

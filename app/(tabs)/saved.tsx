@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import {
-  SafeAreaView, ScrollView, Text, View, Pressable,
-  TextInput, Share, Platform, Linking,
-} from 'react-native';
+import { SafeAreaView, ScrollView, Text, View, Pressable, TextInput, Share, Platform, Linking } from 'react-native';
 import { Link, router } from 'expo-router';
-import { colors, spacing, fs, MIN_TOUCH } from '../../src/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, radius, shadow, fs, MIN_TOUCH } from '../../src/theme';
 import { useUserStore } from '../../src/store/user';
 import { CAREERS, QUALIFICATIONS, PROVIDERS } from '../../src/data/seed';
 import { scheduleDeadlineReminder, cancelDeadlineReminder } from '../../src/lib/notifications';
@@ -59,7 +57,7 @@ function ItemEngagement({ id, title, detailRoute }: { id: string; title: string;
   }
 
   return (
-    <View style={{ backgroundColor: colors.white, borderRadius: 14, marginBottom: 12, overflow: 'hidden' }}>
+    <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.md, marginBottom: 10, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
       {/* Card header — tappable to detail */}
       <Link href={detailRoute as any} asChild>
         <Pressable
@@ -77,52 +75,29 @@ function ItemEngagement({ id, title, detailRoute }: { id: string; title: string;
         </Pressable>
       </Link>
 
-      {/* Engagement toolbar */}
-      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border }}>
-        {/* Notes toggle */}
-        <Pressable
-          onPress={() => setOpen((o) => !o)}
+      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg }}>
+        <Pressable onPress={() => setOpen((o) => !o)}
           style={{ flex: 1, paddingVertical: 10, alignItems: 'center', minHeight: MIN_TOUCH, justifyContent: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel="Add note"
-        >
-          <Text style={{ fontSize: 16 }}>📝</Text>
+          accessibilityRole="button" accessibilityLabel="Add note">
+          <Ionicons name="create-outline" size={18} color={colors.muted} />
           <Text style={{ color: colors.muted, fontSize: 10, marginTop: 2 }}>Note</Text>
         </Pressable>
-
-        {/* Notify-me toggle */}
-        <Pressable
-          onPress={toggleNotify}
+        <Pressable onPress={toggleNotify}
           style={{ flex: 1, paddingVertical: 10, alignItems: 'center', minHeight: MIN_TOUCH, justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: colors.border }}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: meta.notifyMe }}
-          accessibilityLabel="Remind me about deadline"
-        >
-          <Text style={{ fontSize: 16 }}>{meta.notifyMe ? '🔔' : '🔕'}</Text>
-          <Text style={{ color: meta.notifyMe ? colors.teal : colors.muted, fontSize: 10, marginTop: 2, fontWeight: meta.notifyMe ? '700' : '400' }}>
-            {meta.notifyMe ? 'Remind on' : 'Remind'}
-          </Text>
+          accessibilityRole="switch" accessibilityState={{ checked: meta.notifyMe }} accessibilityLabel="Remind me">
+          <Ionicons name={meta.notifyMe ? 'notifications' : 'notifications-outline'} size={18} color={meta.notifyMe ? colors.teal : colors.muted} />
+          <Text style={{ color: meta.notifyMe ? colors.teal : colors.muted, fontSize: 10, marginTop: 2, fontWeight: meta.notifyMe ? '700' : '400' }}>{meta.notifyMe ? 'On' : 'Remind'}</Text>
         </Pressable>
-
-        {/* WhatsApp share */}
-        <Pressable
-          onPress={shareToWhatsApp}
+        <Pressable onPress={shareToWhatsApp}
           style={{ flex: 1, paddingVertical: 10, alignItems: 'center', minHeight: MIN_TOUCH, justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: colors.border }}
-          accessibilityRole="button"
-          accessibilityLabel={`Share ${title} via WhatsApp`}
-        >
-          <Text style={{ fontSize: 16 }}>💬</Text>
+          accessibilityRole="button" accessibilityLabel={`Share ${title}`}>
+          <Ionicons name="share-social-outline" size={18} color={colors.muted} />
           <Text style={{ color: colors.muted, fontSize: 10, marginTop: 2 }}>Share</Text>
         </Pressable>
-
-        {/* Remove */}
-        <Pressable
-          onPress={() => useUserStore.getState().toggleSaved(id)}
+        <Pressable onPress={() => useUserStore.getState().toggleSaved(id)}
           style={{ flex: 1, paddingVertical: 10, alignItems: 'center', minHeight: MIN_TOUCH, justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: colors.border }}
-          accessibilityRole="button"
-          accessibilityLabel={`Remove ${title}`}
-        >
-          <Text style={{ fontSize: 16 }}>🗑️</Text>
+          accessibilityRole="button" accessibilityLabel={`Remove ${title}`}>
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={{ color: colors.danger, fontSize: 10, marginTop: 2 }}>Remove</Text>
         </Pressable>
       </View>
@@ -181,19 +156,21 @@ export default function Saved() {
   if (total === 0) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <View style={{ flex: 1, padding: spacing.md, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 40 }}>🔖</Text>
-          <Text style={{ fontSize: fs(22, fontScale), fontWeight: '800', color: colors.navy, marginTop: 16, textAlign: 'center' }}>
-            Nothing saved yet
-          </Text>
+        <View style={{ backgroundColor: colors.navy, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' }}>
+          <View style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: colors.blueGlow }} />
+          <Text style={{ color: colors.white, fontSize: 26, fontWeight: '800' }}>Saved</Text>
+          <Text style={{ color: colors.mutedLight, fontSize: 13, marginTop: 2 }}>Your shortlist of careers, qualifications & providers</Text>
+        </View>
+        <View style={{ flex: 1, padding: spacing.lg, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 80, height: 80, borderRadius: radius.full, backgroundColor: colors.blue + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: colors.blue, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4 }}>
+            <Ionicons name="bookmark-outline" size={40} color={colors.blue} />
+          </View>
+          <Text style={{ fontSize: fs(22, fontScale), fontWeight: '800', color: colors.navy, textAlign: 'center' }}>Nothing saved yet</Text>
           <Text style={{ color: colors.muted, marginTop: 8, textAlign: 'center', lineHeight: 22, fontSize: fs(14, fontScale) }}>
             Save careers, qualifications and providers to track them, set deadlines and get reminders.
           </Text>
           <Link href="/(tabs)/explore" asChild>
-            <Pressable
-              style={{ backgroundColor: colors.navy, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, marginTop: 24, minHeight: MIN_TOUCH, justifyContent: 'center' }}
-              accessibilityRole="button"
-            >
+            <Pressable style={{ backgroundColor: colors.navy, borderRadius: radius.md, paddingHorizontal: 24, paddingVertical: 14, marginTop: 24, minHeight: MIN_TOUCH, justifyContent: 'center', ...shadow.md }} accessibilityRole="button">
               <Text style={{ color: colors.white, fontWeight: '800', fontSize: fs(14, fontScale) }}>Browse Explore →</Text>
             </Pressable>
           </Link>
@@ -204,62 +181,53 @@ export default function Saved() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 56 }}>
-        <Text style={{ fontSize: fs(28, fontScale), fontWeight: '800', color: colors.navy }}>{t('saved_tab')}</Text>
-        <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 6, fontSize: fs(14, fontScale) }}>
-          {total} saved item{total !== 1 ? 's' : ''}
-        </Text>
-
-        {/* Engagement tip */}
-        <View style={{ backgroundColor: colors.teal + '12', borderRadius: 12, padding: spacing.sm, marginBottom: 20, flexDirection: 'row', gap: 8 }}>
-          <Text style={{ fontSize: 16 }}>💡</Text>
-          <Text style={{ color: colors.ink, fontSize: fs(12, fontScale), lineHeight: fs(12, fontScale) * 1.6, flex: 1 }}>
-            Tap 📝 to add notes, 🔔 to set a deadline reminder, or 💬 to share with a friend on WhatsApp.
-          </Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {/* Dark header */}
+        <View style={{ backgroundColor: colors.navy, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.lg, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, marginBottom: spacing.md, overflow: 'hidden' }}>
+          <View style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: colors.blueGlow }} />
+          <Text style={{ color: colors.white, fontSize: 26, fontWeight: '800' }}>{t('saved_tab')}</Text>
+          <Text style={{ color: colors.mutedLight, fontSize: 13, marginTop: 2 }}>{total} saved item{total !== 1 ? 's' : ''}</Text>
+        </View>
+        <View style={{ paddingHorizontal: spacing.md }}>
+        {/* Tip */}
+        <View style={{ backgroundColor: colors.blue + '0F', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md, flexDirection: 'row', gap: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.blue + '22' }}>
+          <Ionicons name="information-circle-outline" size={20} color={colors.teal} />
+          <Text style={{ color: colors.ink, fontSize: fs(12, fontScale), lineHeight: 18, flex: 1 }}>Tap the note icon to add notes, bell for reminders, or share via WhatsApp.</Text>
         </View>
 
         {savedCareers.length > 0 && (
-          <View style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale), marginBottom: 10 }}>
-              💼 Careers
-            </Text>
-            {savedCareers.map((c) => (
-              <ItemEngagement key={c.id} id={c.id} title={c.title} detailRoute={`/career/${c.id}`} />
-            ))}
+          <View style={{ marginBottom: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Ionicons name="briefcase-outline" size={16} color={colors.navy} />
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Careers</Text>
+            </View>
+            {savedCareers.map((c) => <ItemEngagement key={c.id} id={c.id} title={c.title} detailRoute={`/career/${c.id}`} />)}
           </View>
         )}
-
         {savedQuals.length > 0 && (
-          <View style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale), marginBottom: 10 }}>
-              📚 Qualifications
-            </Text>
-            {savedQuals.map((q) => (
-              <ItemEngagement key={q.id} id={q.id} title={q.title} detailRoute={`/qualification/${q.id}`} />
-            ))}
+          <View style={{ marginBottom: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Ionicons name="school-outline" size={16} color={colors.navy} />
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Qualifications</Text>
+            </View>
+            {savedQuals.map((q) => <ItemEngagement key={q.id} id={q.id} title={q.title} detailRoute={`/qualification/${q.id}`} />)}
           </View>
         )}
-
         {savedProviders.length > 0 && (
-          <View style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale), marginBottom: 10 }}>
-              🏫 Providers
-            </Text>
-            {savedProviders.map((p) => (
-              <ItemEngagement key={p.id} id={p.id} title={p.name} detailRoute={`/provider/${p.id}`} />
-            ))}
+          <View style={{ marginBottom: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Ionicons name="business-outline" size={16} color={colors.navy} />
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Providers</Text>
+            </View>
+            {savedProviders.map((p) => <ItemEngagement key={p.id} id={p.id} title={p.name} detailRoute={`/provider/${p.id}`} />)}
           </View>
         )}
-
-        {/* Journey CTA */}
-        <Pressable
-          onPress={() => router.push('/(tabs)/journey' as any)}
-          style={{ backgroundColor: colors.navy, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8, minHeight: MIN_TOUCH, justifyContent: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel="View my journey"
-        >
+        <Pressable onPress={() => router.push('/(tabs)/journey' as any)}
+          style={{ backgroundColor: colors.navy, borderRadius: radius.md, padding: 16, alignItems: 'center', marginTop: 8, minHeight: MIN_TOUCH, justifyContent: 'center', ...shadow.md }}
+          accessibilityRole="button" accessibilityLabel="View my journey">
           <Text style={{ color: colors.white, fontWeight: '800', fontSize: fs(15, fontScale) }}>View my journey →</Text>
         </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

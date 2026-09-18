@@ -156,55 +156,75 @@ export default function Results() {
           const isSaved = saved.includes(m.id);
           const fieldColor = FIELD_COLORS[m.career.field] ?? colors.muted;
           return (
-            <Link key={m.id} href={`/career/${m.id}`} asChild>
+            <View key={m.id} style={{ marginBottom: 12 }}>
+              <Link href={`/career/${m.id}`} asChild>
+                <Pressable
+                  style={{
+                    backgroundColor: colors.white, borderRadius: 16,
+                    padding: spacing.md,
+                    borderLeftWidth: 4,
+                    borderLeftColor: idx === 0 ? accentColor : colors.border,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${m.career.title}, ${pill.label}`}
+                >
+                  {/* Rank + title + pill */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: idx === 0 ? accentColor : colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: idx === 0 ? colors.white : colors.muted, fontWeight: '800', fontSize: 13 }}>{idx + 1}</Text>
+                      </View>
+                      <Text style={{ color: colors.navy, fontSize: 17, fontWeight: '800', flex: 1 }}>
+                        {m.career.title}
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: pill.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8 }}>
+                      <Text style={{ color: pill.text, fontSize: 11, fontWeight: '700' }}>{pill.label}</Text>
+                    </View>
+                  </View>
+
+                  {/* Reason */}
+                  <Text style={{ color: colors.muted, marginTop: 8, fontSize: 13, lineHeight: 20 }}>
+                    {m.reason}
+                  </Text>
+
+                  {/* Score bar */}
+                  <View style={{ marginTop: 10, marginBottom: 4 }}>
+                    <View style={{ height: 4, backgroundColor: colors.border, borderRadius: 2 }}>
+                      <View style={{ height: 4, width: `${m.score}%`, backgroundColor: accentColor + 'AA', borderRadius: 2 }} />
+                    </View>
+                  </View>
+
+                  {/* Footer */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                    <View style={{ backgroundColor: fieldColor + '18', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
+                      <Text style={{ color: fieldColor, fontSize: 11, fontWeight: '700' }}>{m.career.field}</Text>
+                    </View>
+                    <Text style={{ color: colors.blue, fontSize: 13, fontWeight: '700' }}>Explore →</Text>
+                  </View>
+                </Pressable>
+              </Link>
+
+              {/* Individual save button — sits below the card, outside the Link */}
               <Pressable
+                onPress={() => toggleSaved(m.id)}
                 style={{
-                  backgroundColor: colors.white, borderRadius: 16,
-                  padding: spacing.md, marginBottom: 12,
-                  borderLeftWidth: 4,
-                  borderLeftColor: idx === 0 ? accentColor : colors.border,
+                  backgroundColor: isSaved ? colors.teal + '18' : colors.white,
+                  borderWidth: 1.5,
+                  borderColor: isSaved ? colors.teal : colors.border,
+                  borderRadius: 10, paddingVertical: 10,
+                  alignItems: 'center', marginTop: 4,
+                  flexDirection: 'row', justifyContent: 'center', gap: 6,
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={`${m.career.title}, ${pill.label}`}
+                accessibilityLabel={isSaved ? `Remove ${m.career.title} from saved` : `Save ${m.career.title}`}
               >
-                {/* Rank + title + pill */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: idx === 0 ? accentColor : colors.border, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ color: idx === 0 ? colors.white : colors.muted, fontWeight: '800', fontSize: 13 }}>{idx + 1}</Text>
-                    </View>
-                    <Text style={{ color: colors.navy, fontSize: 17, fontWeight: '800', flex: 1 }}>
-                      {m.career.title}
-                    </Text>
-                  </View>
-                  <View style={{ backgroundColor: pill.bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8 }}>
-                    <Text style={{ color: pill.text, fontSize: 11, fontWeight: '700' }}>{pill.label}</Text>
-                  </View>
-                </View>
-
-                {/* Reason */}
-                <Text style={{ color: colors.muted, marginTop: 8, fontSize: 13, lineHeight: 20 }}>
-                  {m.reason}
+                <Text style={{ fontSize: 14 }}>{isSaved ? '🔖' : '＋'}</Text>
+                <Text style={{ color: isSaved ? colors.teal : colors.muted, fontWeight: '700', fontSize: 13 }}>
+                  {isSaved ? 'Saved' : 'Save this career'}
                 </Text>
-
-                {/* Score bar */}
-                <View style={{ marginTop: 10, marginBottom: 4 }}>
-                  <View style={{ height: 4, backgroundColor: colors.border, borderRadius: 2 }}>
-                    <View style={{ height: 4, width: `${m.score}%`, backgroundColor: accentColor + 'AA', borderRadius: 2 }} />
-                  </View>
-                </View>
-
-                {/* Footer */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                  <View style={{ backgroundColor: fieldColor + '18', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
-                    <Text style={{ color: fieldColor, fontSize: 11, fontWeight: '700' }}>{m.career.field}</Text>
-                  </View>
-                  <Text style={{ color: isSaved ? colors.teal : colors.blue, fontSize: 13, fontWeight: '700' }}>
-                    {isSaved ? 'Saved ✓' : 'Explore →'}
-                  </Text>
-                </View>
               </Pressable>
-            </Link>
+            </View>
           );
         })}
 

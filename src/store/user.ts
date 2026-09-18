@@ -12,9 +12,20 @@ export type AssessmentResult = {
 };
 
 export type SavedMeta = {
-  note: string;           // user's personal note
-  deadline: string;       // ISO date string for application deadline
-  notifyMe: boolean;      // schedule a reminder for this item
+  note: string;
+  deadline: string;
+  notifyMe: boolean;
+};
+
+export type AppNotification = {
+  id: string;
+  title: string;
+  body: string;
+  icon: string;          // emoji icon
+  category: 'journey' | 'deadline' | 'bursary' | 'event' | 'application' | 'saved';
+  route?: string;        // deep-link route to navigate on tap
+  createdAt: string;     // ISO string
+  read: boolean;
 };
 
 // 6 progressive stages — drives home hero, journey steps, and next-action logic
@@ -41,6 +52,7 @@ type UserState = {
   lastOpenedAt: string;                  // ISO date — for streak calc
   assessmentResult: AssessmentResult | null;
   allResults: AssessmentResult[];
+  notifications: AppNotification[];
   _hydrated: boolean;
 
   setLanguage: (language: string) => void;
@@ -55,6 +67,10 @@ type UserState = {
   setPushToken: (token: string | null) => void;
   recordOpen: () => void;                // call on app launch to update streak
   setAssessmentResult: (result: Omit<AssessmentResult, 'completedAt'>) => void;
+  addNotification: (n: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
+  markRead: (id: string) => void;
+  markAllRead: () => void;
+  clearNotifications: () => void;
   clearAll: () => void;
   setHydrated: () => void;
 };
@@ -74,6 +90,7 @@ const defaults = {
   lastOpenedAt: '',
   assessmentResult: null as AssessmentResult | null,
   allResults: [] as AssessmentResult[],
+  notifications: [] as AppNotification[],
   _hydrated: false,
 };
 
@@ -130,6 +147,27 @@ export const useUserStore = create<UserState>()(
           const allResults = [full, ...s.allResults.filter((r) => r.type !== result.type)].slice(0, 20);
           return { assessmentResult: full, allResults };
         }),
+      addNotification: (n) =>
+        set((s) => ({
+          notifications: [
+            {
+              ...n,
+              id: Date.now().toString() + Math.random().toString(36).slice(2),
+              createdAt: new Date().toISOString(),
+              read: false,
+            },
+            ...s.notifications,
+          ].slice(0, 50), // keep latest 50
+        })),
+      markRead: (id) =>
+        set((s) => ({
+          notifications: s.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
+        })),
+      markAllRead: () =>
+        set((s) => ({
+          notifications: s.notifications.map((n) => ({ ...n, read: true })),
+        })),
+      clearNotifications: () => set({ notifications: [] }),
       clearAll: () => set({ ...defaults, _hydrated: true }),
       setHydrated: () => set({ _hydrated: true }),
     }),
@@ -176,4 +214,8 @@ export function useJourneyProgress(): number {
   if (saved.length > 0) score += 10;
   if (saved.length >= 3) score += 10;
   return Math.min(score, 100);
+}
+
+export function useUnreadCount(): number {
+  return useUserStore((s) => s.notifications.filter((n) => !n.read).length);
 }

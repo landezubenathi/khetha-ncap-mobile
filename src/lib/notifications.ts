@@ -1,11 +1,18 @@
 import { Platform } from 'react-native';
+import { useUserStore } from '../store/user';
 
 const isNative = Platform.OS !== 'web';
+
+function addInApp(title: string, body: string, icon: string, category: any, route?: string) {
+  useUserStore.getState().addNotification({ title, body, icon, category, route });
+}
 
 async function N() {
   if (!isNative) return null;
   return (await import('expo-notifications')).default ?? (await import('expo-notifications'));
 }
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
 
 export function setupNotificationHandler(): void {
   if (!isNative) return;
@@ -38,14 +45,33 @@ export async function registerForPushNotifications(): Promise<string | null> {
   if (finalStatus !== 'granted') return null;
 
   if (Platform.OS === 'android') {
+    // Channel: general journey
     await Notifications.setNotificationChannelAsync('journey', {
       name: 'Career Journey',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
     });
+    // Channel: saved items & deadlines
     await Notifications.setNotificationChannelAsync('deadlines', {
       name: 'Application Deadlines',
       importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+    });
+    // Channel: bursaries
+    await Notifications.setNotificationChannelAsync('bursaries', {
+      name: 'Bursaries & Funding',
+      importance: Notifications.AndroidImportance.HIGH,
+    });
+    // Channel: events
+    await Notifications.setNotificationChannelAsync('events', {
+      name: 'Khetha Events',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+    // Channel: university applications
+    await Notifications.setNotificationChannelAsync('applications', {
+      name: 'University Applications',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
     });
   }
 
@@ -53,107 +79,213 @@ export async function registerForPushNotifications(): Promise<string | null> {
   return token.data;
 }
 
-// ── Cancel a single scheduled notification ───────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 async function cancel(id: string) {
   const Notifications = await N();
   if (!Notifications) return;
   await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
 }
 
-// ── 1. Quiz nudge — fires 3 days after install if no quiz taken ───────────────
-export async function scheduleQuizNudge(): Promise<void> {
+async function schedule(
+  identifier: string,
+  title: string,
+  body: string,
+  trigger: any,
+  data: Record<string, string> = {},
+  channelId = 'journey',
+) {
   const Notifications = await N();
   if (!Notifications) return;
-  await cancel('quiz-nudge');
+  await cancel(identifier);
   await Notifications.scheduleNotificationAsync({
-    identifier: 'quiz-nudge',
-    content: {
-      title: 'Discover your career path 🎯',
-      body: 'Take the Career Choice quiz — it only takes 5 minutes.',
-      data: { route: '/questionnaire/career' },
-    },
-    trigger: { seconds: 60 * 60 * 24 * 3, repeats: false } as any,
+    identifier,
+    content: { title, body, data, ...(Platform.OS === 'android' ? { channelId } : {}) },
+    trigger,
   });
 }
 
-// ── 2. Journey re-engagement — fires if app not opened for 7 days ─────────────
-export async function scheduleJourneyReminder(): Promise<void> {
+// ── 1. Saved item alert — fires immediately when user saves something ──────────
+export async function notifySaved(itemTitle: string, itemType: 'career' | 'qualification' | 'provider'): Promise<void> {
+  const icons: Record<string, string> = { career: '💼', qualification: '🎓', provider: '🏫' };
+  const icon = icons[itemType] ?? '🔖';
+  const title = `${icon} Saved to your shortlist`;
+  const body = `"${itemTitle}" has been added. Tap to set a deadline or add a note.`;
+  addInApp(title, body, icon, 'saved', '/(tabs)/saved');
   const Notifications = await N();
   if (!Notifications) return;
-  await cancel('journey-reminder');
   await Notifications.scheduleNotificationAsync({
-    identifier: 'journey-reminder',
+    identifier: `saved-${Date.now()}`,
     content: {
-      title: 'Your career journey is waiting 🗺️',
-      body: 'You have saved careers to explore. Pick up where you left off.',
-      data: { route: '/(tabs)/journey' },
+      title,
+      body,
+      data: { route: '/(tabs)/saved' },
+      ...(Platform.OS === 'android' ? { channelId: 'deadlines' } : {}),
     },
-    trigger: { seconds: 60 * 60 * 24 * 7, repeats: false } as any,
+    trigger: null,
   });
+}
+
+// ── 2. Saved item deadline reminder — 7 days before deadline ─────────────────
+export async function scheduleDeadlineReminder(
+  itemId: string,
+  itemTitle: string,
+  deadlineISO: string,
+): Promise<void> {
+  const deadlineMs = new Date(deadlineISO).getTime();
+  const sevenDaysBefore = deadlineMs - 7 * 24 * 60 * 60 * 1000;
+  const oneDayBefore    = deadlineMs - 1 * 24 * 60 * 60 * 1000;
+
+  if (sevenDaysBefore > Date.now()) {
+    await schedule(
+      `deadline-7d-${itemId}`,
+      '📅 Application deadline in 7 days',
+      `Don't miss the closing date for "${itemTitle}". Check your saved items.`,
+      { date: new Date(sevenDaysBefore) },
+      { route: '/(tabs)/saved' },
+      'deadlines',
+    );
+  }
+  if (oneDayBefore > Date.now()) {
+    await schedule(
+      `deadline-1d-${itemId}`,
+      '⚠️ Application deadline TOMORROW',
+      `"${itemTitle}" closes tomorrow. Submit your application today!`,
+      { date: new Date(oneDayBefore) },
+      { route: '/(tabs)/saved' },
+      'deadlines',
+    );
+  }
+}
+
+export async function cancelDeadlineReminder(itemId: string): Promise<void> {
+  await cancel(`deadline-7d-${itemId}`);
+  await cancel(`deadline-1d-${itemId}`);
+}
+
+// ── 3. University application season alerts ───────────────────────────────────
+export async function scheduleUniversityApplicationAlerts(): Promise<void> {
+  const now = new Date();
+  const year = now.getFullYear() + (now.getMonth() >= 9 ? 1 : 0);
+
+  const openDate = new Date(year, 3, 1, 8, 0, 0);
+  if (openDate > now) {
+    addInApp('🎓 University applications are now open!', `Apply for ${year + 1} — check your saved qualifications and providers before deadlines fill up.`, '🎓', 'application', '/(tabs)/saved');
+    await schedule('uni-apps-open', '🎓 University applications are now open!', `Apply for ${year + 1} — check your saved qualifications and providers before deadlines fill up.`, { date: openDate }, { route: '/(tabs)/saved' }, 'applications');
+  }
+
+  const midDate = new Date(year, 6, 1, 8, 0, 0);
+  if (midDate > now) {
+    addInApp('📋 University applications: halfway through', 'Most universities close in September. Have you submitted your applications yet?', '📋', 'application', '/(tabs)/explore');
+    await schedule('uni-apps-mid', '📋 University applications: halfway through', 'Most universities close in September. Have you submitted your applications yet?', { date: midDate }, { route: '/(tabs)/explore' }, 'applications');
+  }
+
+  const closeDate = new Date(year, 8, 1, 8, 0, 0);
+  if (closeDate > now) {
+    addInApp('🚨 University applications closing soon!', "Most universities close in September. Submit your applications now — don't miss out.", '🚨', 'application', '/(tabs)/saved');
+    await schedule('uni-apps-closing', '🚨 University applications closing soon!', "Most universities close in September. Submit your applications now — don't miss out.", { date: closeDate }, { route: '/(tabs)/saved' }, 'applications');
+  }
+
+  const tvetYear = now.getFullYear() + (now.getMonth() >= 1 ? 1 : 0);
+  const tvetDate = new Date(tvetYear, 1, 1, 8, 0, 0);
+  if (tvetDate > now) {
+    addInApp('🔧 TVET College applications open', 'TVET colleges accept applications year-round. Explore programmes in the Explore tab.', '🔧', 'application', '/(tabs)/explore');
+    await schedule('tvet-apps', '🔧 TVET College applications open', 'TVET colleges accept applications year-round. Explore programmes in the Explore tab.', { date: tvetDate }, { route: '/(tabs)/explore' }, 'applications');
+  }
+}
+
+// ── 4. Bursary season reminders ───────────────────────────────────────────────
+export async function scheduleBursaryReminders(): Promise<void> {
+  const now = new Date();
+  const year = now.getFullYear() + (now.getMonth() >= 10 ? 1 : 0);
+
+  const nsfasOpen = new Date(year, 7, 1, 8, 0, 0);
+  if (nsfasOpen > now) {
+    addInApp('💰 NSFAS applications are open!', 'Apply for NSFAS funding at nsfas.org.za — free university and TVET funding for qualifying students.', '💰', 'bursary', '/chatbot');
+    await schedule('nsfas-open', '💰 NSFAS applications are open!', 'Apply for NSFAS funding at nsfas.org.za — free university and TVET funding for qualifying students.', { date: nsfasOpen }, { route: '/chatbot' }, 'bursaries');
+  }
+
+  const nsfasClose = new Date(year, 10, 15, 8, 0, 0);
+  if (nsfasClose > now) {
+    addInApp('⏰ NSFAS closing soon — apply now!', "NSFAS applications close in November. Don't miss free funding for your studies.", '⏰', 'bursary', '/chatbot');
+    await schedule('nsfas-closing', '⏰ NSFAS closing soon — apply now!', "NSFAS applications close in November. Don't miss free funding for your studies.", { date: nsfasClose }, { route: '/chatbot' }, 'bursaries');
+  }
+
+  const bursaryOpen = new Date(year, 3, 1, 8, 0, 0);
+  if (bursaryOpen > now) {
+    addInApp('🏆 Bursary season has started', 'Many companies and government departments open bursary applications in April. Ask Khetha for guidance.', '🏆', 'bursary', '/chatbot');
+    await schedule('bursaries-open', '🏆 Bursary season has started', 'Many companies and government departments open bursary applications in April. Ask Khetha for guidance.', { date: bursaryOpen }, { route: '/chatbot' }, 'bursaries');
+  }
+
+  const bursaryMid = new Date(year, 5, 1, 8, 0, 0);
+  if (bursaryMid > now) {
+    addInApp('📚 Have you applied for a bursary?', 'Bursaries from SETAs, government and private companies are still open. Speak to a Khetha adviser.', '📚', 'bursary', '/contact');
+    await schedule('bursaries-mid', '📚 Have you applied for a bursary?', 'Bursaries from SETAs, government and private companies are still open. Speak to a Khetha adviser.', { date: bursaryMid }, { route: '/contact' }, 'bursaries');
+  }
+}
+
+// ── 5. Event reminders ────────────────────────────────────────────────────────
+export async function scheduleEventReminders(
+  events: Array<{ id: string; title: string; date: string; venue: string; province: string }>,
+): Promise<void> {
+  for (const event of events) {
+    const eventMs = new Date(event.date).getTime();
+    const twoDaysBefore = eventMs - 2 * 24 * 60 * 60 * 1000;
+    const oneDayBefore  = eventMs - 1 * 24 * 60 * 60 * 1000;
+    const dateLabel = new Date(event.date).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    if (twoDaysBefore > Date.now()) {
+      addInApp(`📅 Khetha event in 2 days`, `"${event.title}" is on ${dateLabel} at ${event.venue}.`, '📅', 'event', '/contact');
+      await schedule(`event-2d-${event.id}`, `📅 Khetha event in 2 days`, `"${event.title}" is on ${dateLabel} at ${event.venue}.`, { date: new Date(twoDaysBefore) }, { route: '/contact' }, 'events');
+    }
+    if (oneDayBefore > Date.now()) {
+      addInApp(`🔔 Khetha event TOMORROW`, `"${event.title}" is tomorrow at ${event.venue}. Don't miss it!`, '🔔', 'event', '/contact');
+      await schedule(`event-1d-${event.id}`, `🔔 Khetha event TOMORROW`, `"${event.title}" is tomorrow at ${event.venue}. Don't miss it!`, { date: new Date(oneDayBefore) }, { route: '/contact' }, 'events');
+    }
+  }
+}
+
+// ── 6. Quiz nudge ─────────────────────────────────────────────────────────────
+export async function scheduleQuizNudge(): Promise<void> {
+  addInApp('Discover your career path 🎯', 'Take the Career Choice quiz — it only takes 5 minutes and gives you personalised matches.', '🎯', 'journey', '/questionnaire/career');
+  await schedule('quiz-nudge', 'Discover your career path 🎯', 'Take the Career Choice quiz — it only takes 5 minutes and gives you personalised matches.', { seconds: 60 * 60 * 24 * 3, repeats: false }, { route: '/questionnaire/career' }, 'journey');
+}
+
+// ── 7. Journey re-engagement ──────────────────────────────────────────────────
+export async function scheduleJourneyReminder(): Promise<void> {
+  addInApp('Your career journey is waiting 🗺️', 'You have saved careers to explore. Pick up where you left off.', '🗺️', 'journey', '/(tabs)/journey');
+  await schedule('journey-reminder', 'Your career journey is waiting 🗺️', 'You have saved careers to explore. Pick up where you left off.', { seconds: 60 * 60 * 24 * 7, repeats: false }, { route: '/(tabs)/journey' }, 'journey');
 }
 
 export async function cancelJourneyReminder(): Promise<void> {
   await cancel('journey-reminder');
 }
 
-// ── 3. Application deadline reminder — fires 7 days before a saved deadline ───
-export async function scheduleDeadlineReminder(
-  itemId: string,
-  itemTitle: string,
-  deadlineISO: string,
-): Promise<void> {
-  const Notifications = await N();
-  if (!Notifications) return;
-  const deadlineMs = new Date(deadlineISO).getTime();
-  const fireMs = deadlineMs - 7 * 24 * 60 * 60 * 1000; // 7 days before
-  if (fireMs <= Date.now()) return; // already past
-  await cancel(`deadline-${itemId}`);
-  await Notifications.scheduleNotificationAsync({
-    identifier: `deadline-${itemId}`,
-    content: {
-      title: '📅 Application deadline in 7 days',
-      body: `Don't miss the deadline for ${itemTitle}.`,
-      data: { route: '/(tabs)/saved' },
-    },
-    trigger: { date: new Date(fireMs) } as any,
-  });
-}
-
-export async function cancelDeadlineReminder(itemId: string): Promise<void> {
-  await cancel(`deadline-${itemId}`);
-}
-
-// ── 4. Streak lapse — fires if streak > 2 and app not opened for 2 days ───────
+// ── 8. Streak lapse ───────────────────────────────────────────────────────────
 export async function scheduleStreakLapse(streakDays: number): Promise<void> {
   if (streakDays < 2) return;
+  addInApp(`Keep your ${streakDays}-day streak alive 🔥`, 'Open Khetha today to stay on track with your career journey.', '🔥', 'journey', '/(tabs)/journey');
+  await schedule('streak-lapse', `Keep your ${streakDays}-day streak alive 🔥`, 'Open Khetha today to stay on track with your career journey.', { seconds: 60 * 60 * 48, repeats: false }, { route: '/(tabs)/journey' }, 'journey');
+}
+
+// ── 9. Weekly digest — every Monday at 09:00 ─────────────────────────────────
+export async function scheduleWeeklyDigest(): Promise<void> {
   const Notifications = await N();
   if (!Notifications) return;
-  await cancel('streak-lapse');
+  await cancel('weekly-digest');
   await Notifications.scheduleNotificationAsync({
-    identifier: 'streak-lapse',
+    identifier: 'weekly-digest',
     content: {
-      title: `Keep your ${streakDays}-day streak alive 🔥`,
-      body: 'Open Khetha today to stay on track with your career journey.',
-      data: { route: '/(tabs)/journey' },
+      title: '📰 Your weekly Khetha update',
+      body: 'New events, bursary tips and career insights are waiting for you.',
+      data: { route: '/(tabs)' },
+      ...(Platform.OS === 'android' ? { channelId: 'journey' } : {}),
     },
-    trigger: { seconds: 60 * 60 * 48, repeats: false } as any,
+    trigger: { weekday: 2, hour: 9, minute: 0, repeats: true } as any, // Monday
   });
 }
 
-// ── 5. Application season alert — fires every year on 1 April ─────────────────
+// ── Legacy alias kept for _layout.tsx compatibility ──────────────────────────
 export async function scheduleApplicationSeasonAlert(): Promise<void> {
-  const Notifications = await N();
-  if (!Notifications) return;
-  await cancel('app-season');
-  const now = new Date();
-  const nextApril = new Date(now.getFullYear() + (now.getMonth() >= 3 ? 1 : 0), 3, 1, 8, 0, 0);
-  await Notifications.scheduleNotificationAsync({
-    identifier: 'app-season',
-    content: {
-      title: '🎓 University applications are open',
-      body: 'Apply now for 2026 — check your saved qualifications and providers.',
-      data: { route: '/(tabs)/saved' },
-    },
-    trigger: { date: nextApril } as any,
-  });
+  await scheduleUniversityApplicationAlerts();
 }

@@ -1,6 +1,8 @@
-import { SafeAreaView, ScrollView, Text, View, Pressable, Linking } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, Text, View, Pressable, Linking, Animated } from 'react-native';
 import { router } from 'expo-router';
-import { colors, spacing, fs } from '../../src/theme';
+import { useState, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, radius, shadow, fs } from '../../src/theme';
 import { useUserStore, useJourneyProgress } from '../../src/store/user';
 import { useT, LANGUAGE_LIST } from '../../src/i18n';
 import { supabase } from '../../src/lib/supabase';
@@ -9,47 +11,146 @@ import { QUIZ_META } from '../../src/data/questionnaire';
 const PROVINCES = ['Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Limpopo', 'Eastern Cape', 'Mpumalanga', 'North West', 'Free State', 'Northern Cape'];
 const GRADES = ['Grade 9', 'Grade 10', 'Grade 11', 'Grade 12', 'Post-matric', 'Adult learner'];
 
+type SavedField = 'grade' | 'province' | 'language' | null;
+
+// Animated tick badge shown after saving a field
+function SavedTick({ visible }: { visible: boolean }) {
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }),
+        Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(scale, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  return (
+    <Animated.View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      opacity, transform: [{ scale }],
+    }}>
+      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="checkmark" size={11} color={colors.white} />
+      </View>
+      <Text style={{ color: colors.teal, fontSize: 12, fontWeight: '800' }}>Saved</Text>
+    </Animated.View>
+  );
+}
+
+// Persistent tick shown when a field already has a value (not flashing)
+function FieldTick() {
+  return (
+    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name="checkmark" size={12} color={colors.teal} />
+    </View>
+  );
+}
+
 export default function Profile() {
   const t = useT();
   const { language, setLanguage, province, setProvince, grade, setGrade, fontScale, consentGiven, allResults, clearAll } = useUserStore();
   const progress = useJourneyProgress();
+  const [confirmedField, setConfirmedField] = useState<SavedField>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function flash(field: SavedField) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setConfirmedField(field);
+    timerRef.current = setTimeout(() => setConfirmedField(null), 2200);
+  }
+
+  function handleSetGrade(g: string) { setGrade(g); flash('grade'); }
+  function handleSetProvince(p: string) { setProvince(p); flash('province'); }
+  function handleSetLanguage(l: string) { setLanguage(l); flash('language'); }
 
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
     clearAll();
-    router.replace('/onboarding');
+    setTimeout(() => router.replace('/'), 50);
+  }
+
+  function confirmReset() {
+    Alert.alert(
+      'Start Over?',
+      'This will clear all your quiz results, saved items and profile settings. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes, start over',
+          style: 'destructive',
+          onPress: () => {
+            clearAll();
+            setTimeout(() => router.replace('/'), 50);
+          },
+        },
+      ]
+    );
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 48 }}>
-        <Text style={{ fontSize: fs(28, fontScale), fontWeight: '800', color: colors.navy }}>Profile</Text>
-        <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 20, fontSize: fs(14, fontScale) }}>
-          Your preferences, progress and privacy.
-        </Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {/* Dark header */}
+        <View style={{ backgroundColor: colors.navy, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.lg, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, marginBottom: spacing.md, overflow: 'hidden' }}>
+        <View style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: colors.purpleGlow }} />
+        <Text style={{ color: colors.white, fontSize: 26, fontWeight: '800' }}>Profile</Text>
+        <Text style={{ color: colors.mutedLight, fontSize: 13, marginTop: 2, marginBottom: spacing.md }}>Your preferences, progress and privacy.</Text>
 
-        {/* Journey progress bar */}
-        <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(15, fontScale) }}>Journey progress</Text>
-            <Text style={{ color: colors.teal, fontWeight: '800', fontSize: fs(15, fontScale) }}>{progress}%</Text>
+        {/* Journey progress */}
+        <View style={{ backgroundColor: colors.glassMid, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.glassBorder }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontWeight: '700', fontSize: fs(14, fontScale) }}>Journey progress</Text>
+            <Text style={{ color: colors.yellowLight, fontWeight: '800', fontSize: fs(14, fontScale) }}>{progress}%</Text>
           </View>
-          <View style={{ height: 8, backgroundColor: colors.border, borderRadius: 4 }}>
-            <View style={{ height: 8, width: `${progress}%`, backgroundColor: colors.teal, borderRadius: 4 }} />
+          <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.full }}>
+            <View style={{ height: 6, width: `${progress}%`, backgroundColor: colors.tealLight, borderRadius: radius.full }} />
           </View>
-          <Pressable onPress={() => router.push('/(tabs)/journey' as any)} style={{ marginTop: 10 }} accessibilityRole="button">
-            <Text style={{ color: colors.blue, fontSize: 13, fontWeight: '700' }}>View full journey →</Text>
+          <Pressable onPress={() => router.push('/(tabs)/journey' as any)} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }} accessibilityRole="button">
+            <Text style={{ color: colors.yellowLight, fontSize: 13, fontWeight: '700' }}>View full journey</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.yellowLight} />
           </Pressable>
         </View>
+      </View>
+
+        {/* Incomplete profile banner */}
+        {(!grade || !province) && (
+          <View style={{ backgroundColor: colors.yellow + '18', borderRadius: radius.md, padding: spacing.sm, marginHorizontal: spacing.md, marginBottom: spacing.sm, flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderLeftWidth: 4, borderLeftColor: colors.yellow }}>
+            <Ionicons name="warning-outline" size={18} color={colors.yellow} style={{ marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(13, fontScale) }}>Profile incomplete</Text>
+              <Text style={{ color: colors.ink, fontSize: fs(12, fontScale), marginTop: 2, lineHeight: 18 }}>
+                {!grade && !province ? 'Set your grade and province to get personalised results.' : !grade ? 'Select your grade to personalise your career matches.' : 'Select your province to find providers near you.'}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Grade */}
-        <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14 }}>
-          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale), marginBottom: 12 }}>Your grade / level</Text>
+        <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Your grade / level</Text>
+              {grade && confirmedField !== 'grade' && <FieldTick />}
+            </View>
+            {confirmedField === 'grade'
+              ? <SavedTick visible />
+              : !grade
+              ? <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Required</Text>
+              : null}
+          </View>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {GRADES.map((g) => (
               <Pressable
                 key={g}
-                onPress={() => setGrade(g)}
+                onPress={() => handleSetGrade(g)}
                 style={{
                   borderWidth: 1.5,
                   borderColor: grade === g ? colors.blue : colors.border,
@@ -67,13 +168,19 @@ export default function Profile() {
         </View>
 
         {/* Language */}
-        <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14 }}>
-          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale), marginBottom: 12 }}>{t('language_prompt')}</Text>
+        <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>{t('language_prompt')}</Text>
+              {language && confirmedField !== 'language' && <FieldTick />}
+            </View>
+            <SavedTick visible={confirmedField === 'language'} />
+          </View>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {LANGUAGE_LIST.map((lang) => (
               <Pressable
                 key={lang}
-                onPress={() => setLanguage(lang)}
+                onPress={() => handleSetLanguage(lang)}
                 style={{
                   borderWidth: 2,
                   borderColor: language === lang ? colors.blue : colors.border,
@@ -91,13 +198,23 @@ export default function Profile() {
         </View>
 
         {/* Province */}
-        <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14 }}>
-          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>Your province</Text>
+        <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(16, fontScale) }}>Your province</Text>
+              {province && confirmedField !== 'province' && <FieldTick />}
+            </View>
+            {confirmedField === 'province'
+              ? <SavedTick visible />
+              : !province
+              ? <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Required</Text>
+              : null}
+          </View>
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
             {PROVINCES.map((p) => (
               <Pressable
                 key={p}
-                onPress={() => setProvince(p)}
+                onPress={() => handleSetProvince(p)}
                 style={{
                   borderWidth: 1.5,
                   borderColor: province === p ? colors.teal : colors.border,
@@ -114,32 +231,25 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Quiz history */}
         {allResults.length > 0 && (
-          <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14 }}>
+          <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
             <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>Assessment history</Text>
             {allResults.map((r) => {
               const meta = QUIZ_META[r.type];
               const date = new Date(r.completedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
               const topCareer = r.careers[0];
               return (
-                <Pressable
-                  key={r.type + r.completedAt}
-                  onPress={() => router.push('/results')}
+                <Pressable key={r.type + r.completedAt} onPress={() => router.push('/results')}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`View ${meta?.title} results`}
-                >
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: (meta?.color ?? colors.blue) + '18', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>{meta?.icon ?? '🎯'}</Text>
+                  accessibilityRole="button" accessibilityLabel={`View ${meta?.title} results`}>
+                  <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: (meta?.color ?? colors.blue) + '18', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="stats-chart-outline" size={20} color={meta?.color ?? colors.blue} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.navy, fontWeight: '700', fontSize: 14 }}>{meta?.title ?? r.type}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-                      {date}{topCareer ? ` · Top: ${topCareer.id.replace(/-/g, ' ')}` : ''}
-                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{date}{topCareer ? ` · Top: ${topCareer.id.replace(/-/g, ' ')}` : ''}</Text>
                   </View>
-                  <Text style={{ color: colors.blue, fontSize: 18 }}>›</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.blue} />
                 </Pressable>
               );
             })}
@@ -147,56 +257,56 @@ export default function Profile() {
         )}
 
         {/* Accessibility shortcut */}
-        <Pressable
-          onPress={() => router.push('/accessibility' as any)}
-          style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel={t('accessibility')}
-        >
-          <View>
-            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(15, fontScale) }}>♿ {t('accessibility')}</Text>
-            <Text style={{ color: colors.muted, fontSize: fs(12, fontScale), marginTop: 3 }}>Text size · High contrast · Offline info</Text>
+        <Pressable onPress={() => router.push('/accessibility' as any)}
+          style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}
+          accessibilityRole="button" accessibilityLabel={t('accessibility')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.blue + '18', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="accessibility-outline" size={20} color={colors.blue} />
+            </View>
+            <View>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: fs(15, fontScale) }}>{t('accessibility')}</Text>
+              <Text style={{ color: colors.muted, fontSize: fs(12, fontScale), marginTop: 2 }}>Text size · High contrast · Offline info</Text>
+            </View>
           </View>
-          <Text style={{ color: colors.blue, fontSize: 20 }}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.blue} />
         </Pressable>
 
         {/* Privacy */}
-        <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 14 }}>
-          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16 }}>Privacy & consent</Text>
+        <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginHorizontal: spacing.md, marginBottom: 14, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
+          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16 }}>Privacy &amp; consent</Text>
           <Text style={{ color: colors.muted, marginTop: 8, fontSize: 13, lineHeight: 20 }}>
-            {consentGiven
-              ? '✓ You have given consent for your data to be stored securely.'
-              : 'You are using guest mode. Data is stored on this device only.'}
+            {consentGiven ? '✓ You have given consent for your data to be stored securely.' : 'You are using guest mode. Data is stored on this device only.'}
           </Text>
         </View>
 
-        {/* Contact adviser */}
-        <Pressable
-          onPress={() => router.push('/contact' as any)}
-          style={{ backgroundColor: colors.teal, borderRadius: 14, padding: 16, alignItems: 'center', marginBottom: 12, minHeight: 56, justifyContent: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel={t('contact_adviser')}
-        >
+        <Pressable onPress={() => router.push('/contact' as any)}
+          style={{ backgroundColor: colors.teal, borderRadius: radius.md, padding: 16, alignItems: 'center', marginHorizontal: spacing.md, marginBottom: 12, minHeight: 56, justifyContent: 'center', ...shadow.teal }}
+          accessibilityRole="button" accessibilityLabel={t('contact_adviser')}>
           <Text style={{ color: colors.white, fontWeight: '800', fontSize: 16 }}>{t('contact_adviser')}</Text>
         </Pressable>
 
-        {/* Khetha hotline */}
-        <Pressable
-          onPress={() => Linking.openURL('tel:0869990123')}
-          style={{ backgroundColor: colors.white, borderRadius: 14, padding: 16, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: colors.border, minHeight: 56, justifyContent: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel="Call Khetha on 086 999 0123"
-        >
-          <Text style={{ color: colors.navy, fontWeight: '700', fontSize: 15 }}>📞 Khetha: 086 999 0123</Text>
+        <Pressable onPress={() => Linking.openURL('tel:0869990123')}
+          style={{ backgroundColor: colors.bgCard, borderRadius: radius.md, padding: 16, alignItems: 'center', marginHorizontal: spacing.md, marginBottom: 12, borderWidth: 1, borderColor: colors.border, minHeight: 56, justifyContent: 'center', flexDirection: 'row', gap: 8, ...shadow.sm }}
+          accessibilityRole="button" accessibilityLabel="Call Khetha on 086 999 0123">
+          <Ionicons name="call-outline" size={18} color={colors.navy} />
+          <Text style={{ color: colors.navy, fontWeight: '700', fontSize: 15 }}>Khetha: 086 999 0123</Text>
         </Pressable>
 
-        {/* Sign out */}
-        <Pressable
-          onPress={signOut}
-          style={{ borderWidth: 1.5, borderColor: colors.danger, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 8, minHeight: 56, justifyContent: 'center' }}
-          accessibilityRole="button"
-          accessibilityLabel={t('sign_out')}
-        >
+        <Pressable onPress={confirmReset}
+          style={{ backgroundColor: colors.yellow + '18', borderWidth: 1.5, borderColor: colors.yellow, borderRadius: radius.md, padding: 16, alignItems: 'center', marginHorizontal: spacing.md, marginTop: 8, minHeight: 56, justifyContent: 'center', flexDirection: 'row', gap: 8 }}
+          accessibilityRole="button" accessibilityLabel="Start over from scratch">
+          <Ionicons name="refresh-outline" size={18} color={colors.navy} />
+          <View>
+            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 15 }}>Start Over</Text>
+            <Text style={{ color: colors.muted, fontSize: 11 }}>Clears all results, saves and settings</Text>
+          </View>
+        </Pressable>
+
+        <Pressable onPress={signOut}
+          style={{ borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius.md, padding: 16, alignItems: 'center', marginHorizontal: spacing.md, marginTop: 10, minHeight: 56, justifyContent: 'center', flexDirection: 'row', gap: 8 }}
+          accessibilityRole="button" accessibilityLabel={t('sign_out')}>
+          <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={{ color: colors.danger, fontWeight: '700', fontSize: 15 }}>{t('sign_out')}</Text>
         </Pressable>
       </ScrollView>
