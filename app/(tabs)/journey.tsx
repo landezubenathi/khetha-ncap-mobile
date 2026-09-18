@@ -1,6 +1,7 @@
 import { Link, router } from 'expo-router';
 import { SafeAreaView, ScrollView, Text, View, Pressable } from 'react-native';
-import { colors, spacing } from '../../src/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, radius, shadow } from '../../src/theme';
 import { useUserStore, useJourneyStage, useJourneyProgress, useResultByType } from '../../src/store/user';
 import { CAREERS, QUALIFICATIONS, PROVIDERS } from '../../src/data/seed';
 import { QUIZ_META, CAREER_QUESTIONS, JOB_FIT_QUESTIONS, SECTION_SUMMARIES } from '../../src/data/questionnaire';
@@ -18,10 +19,9 @@ function ProgressRing({ pct }: { pct: number }) {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       {/* Background ring */}
-      <View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 6, borderColor: colors.border }} />
-      {/* Filled arc — approximated with a coloured overlay using rotation */}
-      <View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 6, borderColor: colors.teal, borderRightColor: pct >= 25 ? colors.teal : 'transparent', borderBottomColor: pct >= 50 ? colors.teal : 'transparent', borderLeftColor: pct >= 75 ? colors.teal : 'transparent', transform: [{ rotate: '-90deg' }] }} />
-      <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 18 }}>{filled}%</Text>
+      <View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 6, borderColor: 'rgba(255,255,255,0.15)' }} />
+      <View style={{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 6, borderColor: colors.tealLight, borderRightColor: pct >= 25 ? colors.tealLight : 'transparent', borderBottomColor: pct >= 50 ? colors.tealLight : 'transparent', borderLeftColor: pct >= 75 ? colors.tealLight : 'transparent', transform: [{ rotate: '-90deg' }] }} />
+      <Text style={{ color: colors.white, fontWeight: '800', fontSize: 18 }}>{filled}%</Text>
     </View>
   );
 }
@@ -112,18 +112,18 @@ function JourneyStep({ num, label, sublabel, done, active, route }: {
       accessibilityRole={done ? 'text' : 'button'}
       accessibilityLabel={`${label}: ${sublabel}`}
     >
-      {/* Step indicator + connector */}
       <View style={{ alignItems: 'center', marginRight: 14 }}>
         <View style={{
-          width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-          backgroundColor: done ? colors.teal : active ? colors.navy : colors.white,
-          borderWidth: done || active ? 0 : 2, borderColor: colors.border,
+          width: 36, height: 36, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: done ? colors.teal : active ? colors.blue : colors.bgCard,
+          borderWidth: done || active ? 0 : 1.5, borderColor: colors.border,
+          ...(done ? shadow.teal : active ? shadow.blue : shadow.xs),
         }}>
-          <Text style={{ color: done || active ? colors.white : colors.muted, fontWeight: '800', fontSize: done ? 16 : 14 }}>
-            {done ? '✓' : num}
-          </Text>
+          {done
+            ? <Ionicons name="checkmark" size={18} color={colors.white} />
+            : <Text style={{ color: active ? colors.white : colors.muted, fontWeight: '800', fontSize: 13 }}>{num}</Text>}
         </View>
-        <View style={{ width: 2, height: 20, backgroundColor: done ? colors.teal + '44' : colors.border, marginTop: 4 }} />
+        <View style={{ width: 2, height: 20, backgroundColor: done ? colors.teal + '55' : colors.border, marginTop: 4 }} />
       </View>
       {/* Content */}
       <View style={{ flex: 1, paddingTop: 4 }}>
@@ -134,7 +134,7 @@ function JourneyStep({ num, label, sublabel, done, active, route }: {
           {sublabel}
         </Text>
       </View>
-      {!done && active && <Text style={{ color: colors.blue, fontSize: 20, marginTop: 6 }}>›</Text>}
+      {!done && active && <Ionicons name="chevron-forward" size={18} color={colors.blue} style={{ marginTop: 6 }} />}
     </Pressable>
   );
 }
@@ -150,6 +150,49 @@ export default function Journey() {
   const hasCareer = types.includes('career');
   const hasJobFit = types.includes('job-fit');
   const hasSaves = saved.length > 0;
+
+  // ── Empty state for brand new users ──────────────────────────────────────────
+  const isBlankSlate = !grade && !province && allResults.length === 0 && saved.length === 0;
+  if (isBlankSlate) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View style={{ backgroundColor: colors.navy, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' }}>
+          <View style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: colors.tealGlow }} />
+          <Text style={{ color: colors.white, fontSize: 26, fontWeight: '800' }}>My Journey</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginTop: 2 }}>Build your career profile step by step</Text>
+        </View>
+        <View style={{ flex: 1, padding: spacing.lg, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 80, height: 80, borderRadius: radius.full, backgroundColor: colors.teal + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <Ionicons name="map-outline" size={40} color={colors.teal} />
+          </View>
+          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 24, textAlign: 'center', lineHeight: 32 }}>Your journey starts here</Text>
+          <Text style={{ color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 10, lineHeight: 22, paddingHorizontal: 16 }}>Complete a few quick steps to build your personalised career profile. It takes less than 10 minutes.</Text>
+          <View style={{ width: '100%', marginTop: 28, gap: 10 }}>
+            {[
+              { icon: 'person-outline', label: 'Set your grade & province', route: '/(tabs)/profile', color: colors.blue, glow: colors.blueGlow },
+              { icon: 'compass-outline', label: 'Take the Career Choice quiz', route: '/questionnaire/career', color: colors.teal, glow: colors.tealGlow },
+              { icon: 'puzzle-outline', label: 'Take the Job Fit quiz', route: '/questionnaire/job-fit', color: colors.purple, glow: colors.purpleGlow },
+            ].map(({ icon, label, route, color, glow }) => (
+              <Pressable key={label} onPress={() => router.push(route as any)}
+                style={{ backgroundColor: colors.bgCard, borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.borderLight, ...shadow.sm }}
+                accessibilityRole="button" accessibilityLabel={label}>
+                <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: color, alignItems: 'center', justifyContent: 'center', shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5 }}>
+                  <Ionicons name={icon as any} size={20} color={colors.white} />
+                </View>
+                <Text style={{ color: colors.navy, fontWeight: '700', fontSize: 15, flex: 1 }}>{label}</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Pressable>
+            ))}
+          </View>
+          <Pressable onPress={() => router.push('/(tabs)/profile' as any)}
+            style={{ backgroundColor: colors.navy, borderRadius: radius.md, paddingVertical: 16, paddingHorizontal: 32, marginTop: 28, minHeight: 52, justifyContent: 'center', ...shadow.lg }}
+            accessibilityRole="button">
+            <Text style={{ color: colors.white, fontWeight: '800', fontSize: 16 }}>Get started →</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const savedCareers = CAREERS.filter((c) => saved.includes(c.id));
   const savedQuals = QUALIFICATIONS.filter((q) => saved.includes(q.id));
@@ -203,39 +246,36 @@ export default function Journey() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.md, paddingBottom: 56 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
 
-        {/* Header + progress ring */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: colors.navy }}>My Journey</Text>
-            <Text style={{ color: colors.muted, marginTop: 4, fontSize: 14, lineHeight: 20 }}>
-              {stage === 'ready'
-                ? 'Your profile is complete. Time to take action.'
-                : 'Complete each step to build your career profile.'}
-            </Text>
+        {/* Dark header */}
+        <View style={{ backgroundColor: colors.navy, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xl, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, marginBottom: spacing.lg, overflow: 'hidden' }}>
+          <View style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: colors.tealGlow }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.white, fontSize: 26, fontWeight: '800' }}>My Journey</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginTop: 2 }}>
+                {stage === 'ready' ? 'Profile complete — time to act.' : 'Complete each step to build your profile.'}
+              </Text>
+            </View>
+            <ProgressRing pct={progress} />
           </View>
-          <ProgressRing pct={progress} />
+          <Pressable onPress={() => router.push(next.route as any)}
+            style={{ backgroundColor: colors.glassMid, borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.glassBorder }}
+            accessibilityRole="button" accessibilityLabel={next.cta}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.yellowLight, fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 4 }}>NEXT STEP</Text>
+              <Text style={{ color: colors.white, fontWeight: '800', fontSize: 16 }}>{next.title}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 3 }}>{next.body}</Text>
+            </View>
+            <View style={{ backgroundColor: colors.yellow, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 8 }}>
+              <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 12 }}>{next.cta}</Text>
+            </View>
+          </Pressable>
         </View>
 
-        {/* ── NEXT ACTION BANNER ── */}
-        <Pressable
-          onPress={() => router.push(next.route as any)}
-          style={{ backgroundColor: next.color, borderRadius: 16, padding: spacing.md, marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-          accessibilityRole="button"
-          accessibilityLabel={next.cta}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.white + 'BB', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 }}>NEXT STEP</Text>
-            <Text style={{ color: colors.white, fontWeight: '800', fontSize: 17, lineHeight: 24 }}>{next.title}</Text>
-            <Text style={{ color: colors.white + 'CC', fontSize: 13, marginTop: 4, lineHeight: 18 }}>{next.body}</Text>
-          </View>
-          <View style={{ backgroundColor: colors.white + '22', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-            <Text style={{ color: colors.white, fontWeight: '800', fontSize: 13 }}>{next.cta}</Text>
-          </View>
-        </Pressable>
-
-        {/* ── QUIZ RESULTS SIDE BY SIDE ── */}
+        <View style={{ paddingHorizontal: spacing.md }}>
+        {/* Quiz results */}
         <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>Your assessments</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
           <QuizCard type="career" />
@@ -244,7 +284,7 @@ export default function Journey() {
 
         {/* ── PROFILE SUMMARY ── */}
         {(grade || province || saved.length > 0) && (
-          <View style={{ backgroundColor: colors.white, borderRadius: 16, padding: spacing.md, marginBottom: 24 }}>
+          <View style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.md, marginBottom: 24, borderWidth: 1, borderColor: colors.borderLight, ...shadow.md }}>
             <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, marginBottom: 12 }}>Your profile</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {grade && (
@@ -277,37 +317,25 @@ export default function Journey() {
             {/* Top saved career spotlight */}
             {savedCareers.length > 0 && (
               <Link href={`/career/${savedCareers[0].id}`} asChild>
-                <Pressable
-                  style={{ backgroundColor: (FIELD_COLORS[savedCareers[0].field] ?? colors.muted) + '12', borderRadius: 12, padding: spacing.sm, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`View ${savedCareers[0].title}`}
-                >
+                <Pressable style={{ backgroundColor: (FIELD_COLORS[savedCareers[0].field] ?? colors.muted) + '12', borderRadius: radius.md, padding: spacing.sm, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                  accessibilityRole="button" accessibilityLabel={`View ${savedCareers[0].title}`}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.muted, fontSize: 11, fontWeight: '700' }}>TOP SAVED CAREER</Text>
                     <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 15, marginTop: 2 }}>{savedCareers[0].title}</Text>
                     <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{savedCareers[0].salary_range}</Text>
                   </View>
-                  <Text style={{ color: colors.blue, fontSize: 20 }}>›</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.blue} />
                 </Pressable>
               </Link>
             )}
           </View>
         )}
 
-        {/* ── JOURNEY STEPS ── */}
         <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, marginBottom: 16 }}>Your steps</Text>
         {steps.map((s, i) => (
-          <JourneyStep
-            key={s.label}
-            num={i + 1}
-            label={s.label}
-            sublabel={s.sublabel}
-            done={s.done}
-            active={s.active}
-            route={s.route}
-          />
+          <JourneyStep key={s.label} num={i + 1} label={s.label} sublabel={s.sublabel} done={s.done} active={s.active} route={s.route} />
         ))}
-
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

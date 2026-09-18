@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import { Link, Stack } from 'expo-router';
 import { colors, spacing } from '../src/theme';
+import { useUserStore } from '../src/store/user';
 import { CAREER_SUBJECT_PROFILES, ALL_SUBJECTS, matchCareersBySubjects } from '../src/data/subjects';
 
 type Mode = 'career-to-subjects' | 'subjects-to-careers';
@@ -27,6 +28,7 @@ export default function SubjectChooser() {
   // Mode 2: Subjects → Careers
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
+  const { saved, toggleSaved } = useUserStore();
   const selectedProfile = CAREER_SUBJECT_PROFILES.find((p) => p.careerId === selectedCareerId);
 
   function toggleSubject(subject: string) {
@@ -184,18 +186,32 @@ export default function SubjectChooser() {
                   );
                 })}
 
-                {/* CTA to career detail */}
-                <Link href={`/career/${selectedProfile.careerId}`} asChild>
+                {/* CTAs: explore + save */}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                  <Link href={`/career/${selectedProfile.careerId}`} asChild>
+                    <Pressable
+                      style={{ flex: 1, backgroundColor: colors.navy, borderRadius: 14, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Explore ${selectedProfile.careerTitle}`}
+                    >
+                      <Text style={{ color: colors.white, fontWeight: '800', fontSize: 15 }}>Explore →</Text>
+                    </Pressable>
+                  </Link>
                   <Pressable
-                    style={{ backgroundColor: colors.navy, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 12, minHeight: 52, justifyContent: 'center' }}
+                    onPress={() => toggleSaved(selectedProfile.careerId)}
+                    style={{
+                      flex: 1, borderRadius: 14, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center',
+                      backgroundColor: saved.includes(selectedProfile.careerId) ? colors.teal + '18' : colors.white,
+                      borderWidth: 1.5, borderColor: saved.includes(selectedProfile.careerId) ? colors.teal : colors.border,
+                    }}
                     accessibilityRole="button"
-                    accessibilityLabel={`Explore ${selectedProfile.careerTitle}`}
+                    accessibilityLabel={saved.includes(selectedProfile.careerId) ? 'Saved' : 'Save career'}
                   >
-                    <Text style={{ color: colors.white, fontWeight: '800', fontSize: 15 }}>
-                      Explore {selectedProfile.careerTitle} →
+                    <Text style={{ color: saved.includes(selectedProfile.careerId) ? colors.teal : colors.muted, fontWeight: '800', fontSize: 15 }}>
+                      {saved.includes(selectedProfile.careerId) ? '🔖 Saved' : '+ Save'}
                     </Text>
                   </Pressable>
-                </Link>
+                </View>
               </View>
             )}
           </>
@@ -244,50 +260,66 @@ export default function SubjectChooser() {
                 {subjectResults.map(({ profile, matchScore, missingRequired }) => {
                   const fieldColor = FIELD_COLORS[profile.field] ?? colors.muted;
                   const isFullMatch = missingRequired.length === 0;
+                  const isSaved = saved.includes(profile.careerId);
                   return (
-                    <Link key={profile.careerId} href={`/career/${profile.careerId}`} asChild>
+                    <View key={profile.careerId} style={{ marginBottom: 12 }}>
+                      <Link href={`/career/${profile.careerId}`} asChild>
+                        <Pressable
+                          style={{
+                            backgroundColor: colors.white, borderRadius: 14,
+                            padding: spacing.md,
+                            borderLeftWidth: 4,
+                            borderLeftColor: isFullMatch ? colors.teal : colors.border,
+                            opacity: matchScore < 20 ? 0.6 : 1,
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${profile.careerTitle}, ${matchScore}% match`}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, flex: 1 }}>
+                              {profile.careerTitle}
+                            </Text>
+                            <View style={{
+                              backgroundColor: isFullMatch ? colors.teal + '22' : colors.border,
+                              borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8,
+                            }}>
+                              <Text style={{ color: isFullMatch ? colors.teal : colors.muted, fontSize: 12, fontWeight: '800' }}>
+                                {matchScore}% match
+                              </Text>
+                            </View>
+                          </View>
+                          {missingRequired.length > 0 && (
+                            <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, padding: 8, marginTop: 8 }}>
+                              <Text style={{ color: '#92600A', fontSize: 12, fontWeight: '700' }}>
+                                ⚠ Still needed: {missingRequired.join(', ')}
+                              </Text>
+                            </View>
+                          )}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                            <View style={{ backgroundColor: fieldColor + '22', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
+                              <Text style={{ color: fieldColor, fontSize: 11, fontWeight: '700' }}>{profile.field}</Text>
+                            </View>
+                            <Text style={{ color: colors.blue, fontSize: 13, fontWeight: '700' }}>View pathway →</Text>
+                          </View>
+                        </Pressable>
+                      </Link>
                       <Pressable
+                        onPress={() => toggleSaved(profile.careerId)}
                         style={{
-                          backgroundColor: colors.white, borderRadius: 14,
-                          padding: spacing.md, marginBottom: 12,
-                          borderLeftWidth: 4,
-                          borderLeftColor: isFullMatch ? colors.teal : colors.border,
-                          opacity: matchScore < 20 ? 0.6 : 1,
+                          backgroundColor: isSaved ? colors.teal + '18' : colors.white,
+                          borderWidth: 1.5, borderColor: isSaved ? colors.teal : colors.border,
+                          borderRadius: 10, paddingVertical: 10, marginTop: 4,
+                          alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
                         }}
                         accessibilityRole="button"
-                        accessibilityLabel={`${profile.careerTitle}, ${matchScore}% match`}
+                        accessibilityLabel={isSaved ? `Remove ${profile.careerTitle}` : `Save ${profile.careerTitle}`}
                       >
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <Text style={{ color: colors.navy, fontWeight: '800', fontSize: 16, flex: 1 }}>
-                            {profile.careerTitle}
-                          </Text>
-                          <View style={{
-                            backgroundColor: isFullMatch ? colors.teal + '22' : colors.border,
-                            borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8,
-                          }}>
-                            <Text style={{ color: isFullMatch ? colors.teal : colors.muted, fontSize: 12, fontWeight: '800' }}>
-                              {matchScore}% match
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Missing required subjects warning */}
-                        {missingRequired.length > 0 && (
-                          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, padding: 8, marginTop: 8 }}>
-                            <Text style={{ color: '#92600A', fontSize: 12, fontWeight: '700' }}>
-                              ⚠ Still needed: {missingRequired.join(', ')}
-                            </Text>
-                          </View>
-                        )}
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                          <View style={{ backgroundColor: fieldColor + '22', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
-                            <Text style={{ color: fieldColor, fontSize: 11, fontWeight: '700' }}>{profile.field}</Text>
-                          </View>
-                          <Text style={{ color: colors.blue, fontSize: 13, fontWeight: '700' }}>View pathway →</Text>
-                        </View>
+                        <Text style={{ fontSize: 13 }}>{isSaved ? '🔖' : '+'}</Text>
+                        <Text style={{ color: isSaved ? colors.teal : colors.muted, fontWeight: '700', fontSize: 13 }}>
+                          {isSaved ? 'Saved' : 'Save this career'}
+                        </Text>
                       </Pressable>
-                    </Link>
+                    </View>
                   );
                 })}
               </>

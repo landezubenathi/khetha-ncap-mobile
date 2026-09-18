@@ -1,7 +1,7 @@
 import { Stack, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
-import { colors, spacing, MIN_TOUCH, fs } from '../src/theme';
+import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { colors, spacing, MIN_TOUCH, fs, radius, shadow } from '../src/theme';
 import { useUserStore } from '../src/store/user';
 import { useT, LANGUAGE_LIST } from '../src/i18n';
 
@@ -31,10 +31,13 @@ export default function Onboarding() {
         contentContainerStyle={{ padding: spacing.xl, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Brand */}
-        <Text style={{ color: colors.yellow, fontSize: fs(18, scale), fontWeight: '800', letterSpacing: 2, marginTop: 16 }}>
-          KHETHA NCAP
-        </Text>
+        {/* Brand logos */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+          <Image source={require('../assets/khetha_logo.png')} style={{ height: 52, width: 140 }} resizeMode="contain" />
+          <View style={{ backgroundColor: colors.white, borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 6, ...shadow.sm }}>
+            <Image source={require('../assets/DHET-FC-logo.png')} style={{ height: 44, width: 100 }} resizeMode="contain" />
+          </View>
+        </View>
         <Text style={{ color: colors.white, fontSize: fs(34, scale), fontWeight: '800', marginTop: 16, lineHeight: fs(34, scale) * 1.25 }}>
           {t('tagline')}
         </Text>

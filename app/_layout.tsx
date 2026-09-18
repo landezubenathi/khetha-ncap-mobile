@@ -71,13 +71,15 @@ export default function RootLayout() {
         <Stack.Screen name="auth"                options={{ headerShown: false }} />
         <Stack.Screen name="consent"             options={{ headerShown: false }} />
         <Stack.Screen name="results"             options={{ title: 'Your matches' }} />
-        <Stack.Screen name="contact"             options={{ title: 'Get advice' }} />
+        <Stack.Screen name="contact"             options={{ title: 'Get Advice' }} />
         <Stack.Screen name="subject-chooser"      options={{ title: 'Subject Chooser' }} />
         <Stack.Screen name="questionnaire/[type]" options={{ title: 'Career quiz' }} />
         <Stack.Screen name="career/[id]"         options={{ title: 'Career details' }} />
         <Stack.Screen name="qualification/[id]"  options={{ title: 'Qualification' }} />
         <Stack.Screen name="provider/[id]"       options={{ title: 'Provider' }} />
         <Stack.Screen name="accessibility"        options={{ title: 'Accessibility' }} />
+        <Stack.Screen name="chatbot"              options={{ headerShown: false }} />
+        <Stack.Screen name="advisor"              options={{ headerShown: false }} />
       </Stack>
       </View>
     </QueryClientProvider>

@@ -25,7 +25,28 @@ export type Provider = {
 
 export type Adviser = {
   id: string; name: string; role: string; province: string;
-  phone: string; email: string;
+  city: string; phone: string; email: string;
+  languages: string[];       // languages the adviser speaks
+  availability: string;      // e.g. 'Mon–Fri 08:00–16:00'
+  walk_in: boolean;          // accepts walk-in appointments
+  specialisation: string;    // e.g. 'TVET & artisan pathways'
+};
+
+export type KhethaEvent = {
+  id: string; title: string; description: string;
+  date: string;              // ISO date string
+  time: string;              // e.g. '09:00–13:00'
+  venue: string;
+  province: string;
+  type: 'Career Expo' | 'Workshop' | 'Open Day' | 'Webinar';
+  registration_url: string;
+};
+
+export type WalkInCentre = {
+  id: string; name: string; province: string;
+  address: string; phone: string;
+  hours: string;
+  latitude: number; longitude: number;
 };
 
 export const CAREERS: Career[] = [
@@ -393,8 +414,76 @@ export const PROVIDERS: Provider[] = [
 ];
 
 export const ADVISERS: Adviser[] = [
-  { id: 'a1', name: 'Nomsa Dlamini', role: 'Career Development Practitioner', province: 'Gauteng', phone: '+27 11 560 0000', email: 'ndlamini@khetha.org.za' },
-  { id: 'a2', name: 'Thabo Mokoena', role: 'Career Development Practitioner', province: 'KwaZulu-Natal', phone: '+27 31 560 0001', email: 'tmokoena@khetha.org.za' },
-  { id: 'a3', name: 'Ayanda Nkosi', role: 'Senior Career Adviser', province: 'Western Cape', phone: '+27 21 560 0002', email: 'ankosi@khetha.org.za' },
-  { id: 'a4', name: 'Lerato Sithole', role: 'Career Development Practitioner', province: 'Limpopo', phone: '+27 15 560 0003', email: 'lsithole@khetha.org.za' },
+  { id: 'a1', name: 'Nomsa Dlamini',    role: 'Career Development Practitioner', province: 'Gauteng',       city: 'Johannesburg', phone: '+27 11 560 0000', email: 'ndlamini@khetha.org.za',   languages: ['English', 'isiZulu', 'Sesotho'],    availability: 'Mon–Fri 08:00–16:00', walk_in: true,  specialisation: 'School-to-work transitions' },
+  { id: 'a2', name: 'Thabo Mokoena',    role: 'Career Development Practitioner', province: 'KwaZulu-Natal', city: 'Durban',        phone: '+27 31 560 0001', email: 'tmokoena@khetha.org.za',   languages: ['English', 'isiZulu'],               availability: 'Mon–Fri 08:00–16:00', walk_in: true,  specialisation: 'Health & social services careers' },
+  { id: 'a3', name: 'Ayanda Nkosi',     role: 'Senior Career Adviser',           province: 'Western Cape',  city: 'Cape Town',     phone: '+27 21 560 0002', email: 'ankosi@khetha.org.za',    languages: ['English', 'Afrikaans', 'isiXhosa'], availability: 'Mon–Thu 09:00–15:00', walk_in: false, specialisation: 'Higher education pathways' },
+  { id: 'a4', name: 'Lerato Sithole',   role: 'Career Development Practitioner', province: 'Limpopo',       city: 'Polokwane',     phone: '+27 15 560 0003', email: 'lsithole@khetha.org.za',  languages: ['English', 'Sepedi', 'Xitsonga'],    availability: 'Mon–Fri 08:00–16:00', walk_in: true,  specialisation: 'Agriculture & rural livelihoods' },
+  { id: 'a5', name: 'Zanele Khumalo',   role: 'Career Development Practitioner', province: 'Mpumalanga',    city: 'Nelspruit',     phone: '+27 13 560 0004', email: 'zkhumalo@khetha.org.za',  languages: ['English', 'isiSwati', 'isiZulu'],   availability: 'Tue–Sat 08:00–14:00', walk_in: true,  specialisation: 'TVET & artisan pathways' },
+  { id: 'a6', name: 'Pieter van Wyk',   role: 'Career Development Practitioner', province: 'Northern Cape', city: 'Kimberley',     phone: '+27 53 560 0005', email: 'pvanwyk@khetha.org.za',   languages: ['English', 'Afrikaans', 'Setswana'], availability: 'Mon–Fri 08:00–16:00', walk_in: false, specialisation: 'Mining & engineering trades' },
+  { id: 'a7', name: 'Dineo Molefe',     role: 'Senior Career Adviser',           province: 'North West',    city: 'Mahikeng',      phone: '+27 18 560 0006', email: 'dmolefe@khetha.org.za',   languages: ['English', 'Setswana', 'Sesotho'],   availability: 'Mon–Fri 09:00–15:00', walk_in: true,  specialisation: 'Business & entrepreneurship' },
+  { id: 'a8', name: 'Sipho Radebe',     role: 'Career Development Practitioner', province: 'Free State',    city: 'Bloemfontein',  phone: '+27 51 560 0007', email: 'sradebe@khetha.org.za',   languages: ['English', 'Sesotho', 'Afrikaans'],  availability: 'Mon–Fri 08:00–16:00', walk_in: true,  specialisation: 'Education & teaching careers' },
+  { id: 'a9', name: 'Nolwazi Mthembu',  role: 'Career Development Practitioner', province: 'Eastern Cape',  city: 'East London',   phone: '+27 43 560 0008', email: 'nmthembu@khetha.org.za',  languages: ['English', 'isiXhosa'],              availability: 'Mon–Fri 08:00–16:00', walk_in: false, specialisation: 'Technology & digital careers' },
+];
+
+export const EVENTS: KhethaEvent[] = [
+  {
+    id: 'e1', title: 'Khetha Career Expo — Gauteng',
+    description: 'Meet career advisers, universities, TVET colleges and employers under one roof. Free entry for learners and job seekers.',
+    date: '2025-08-16', time: '09:00–15:00',
+    venue: 'Soweto Theatre, Jabulani, Soweto',
+    province: 'Gauteng', type: 'Career Expo',
+    registration_url: 'https://khetha.dhet.gov.za/events/gauteng-expo-2025',
+  },
+  {
+    id: 'e2', title: 'NCAP Subject Choice Workshop',
+    description: 'Grade 9 learners and parents: understand how subject choices affect your career options. Presented by Khetha career practitioners.',
+    date: '2025-07-29', time: '10:00–12:30',
+    venue: 'Durban City Hall, Durban',
+    province: 'KwaZulu-Natal', type: 'Workshop',
+    registration_url: 'https://khetha.dhet.gov.za/events/subject-choice-kzn',
+  },
+  {
+    id: 'e3', title: 'TVET Open Day — Western Cape',
+    description: 'Explore TVET college programmes, bursaries and learnerships. Northlink and CPUT representatives will be present.',
+    date: '2025-08-02', time: '08:30–13:00',
+    venue: 'Northlink TVET College, Panorama, Cape Town',
+    province: 'Western Cape', type: 'Open Day',
+    registration_url: 'https://khetha.dhet.gov.za/events/tvet-open-day-wc',
+  },
+  {
+    id: 'e4', title: 'Career Guidance Webinar: Health Careers',
+    description: 'Online session covering nursing, paramedics, health sciences and bursary opportunities in the public health sector.',
+    date: '2025-07-24', time: '17:00–18:30',
+    venue: 'Online (Zoom — link sent on registration)',
+    province: 'All provinces', type: 'Webinar',
+    registration_url: 'https://khetha.dhet.gov.za/events/health-careers-webinar',
+  },
+  {
+    id: 'e5', title: 'Khetha Career Expo — Limpopo',
+    description: 'Career guidance, university applications support and bursary information for Limpopo learners.',
+    date: '2025-09-06', time: '09:00–14:00',
+    venue: 'University of Limpopo, Mankweng',
+    province: 'Limpopo', type: 'Career Expo',
+    registration_url: 'https://khetha.dhet.gov.za/events/limpopo-expo-2025',
+  },
+  {
+    id: 'e6', title: 'Entrepreneurship & Artisan Pathways Workshop',
+    description: 'Learn about trade apprenticeships, SETA learnerships and starting your own business after matric.',
+    date: '2025-08-23', time: '09:00–12:00',
+    venue: 'Ekurhuleni East TVET College, Boksburg',
+    province: 'Gauteng', type: 'Workshop',
+    registration_url: 'https://khetha.dhet.gov.za/events/artisan-workshop-gp',
+  },
+];
+
+export const WALK_IN_CENTRES: WalkInCentre[] = [
+  { id: 'w1', name: 'Khetha Johannesburg',  province: 'Gauteng',       address: '123 Eloff St, Johannesburg CBD, 2001',          phone: '+27 11 560 0100', hours: 'Mon–Fri 08:00–16:00', latitude: -26.2041, longitude: 28.0473 },
+  { id: 'w2', name: 'Khetha Durban',        province: 'KwaZulu-Natal', address: '45 Dr Pixley KaSeme St, Durban Central, 4001',   phone: '+27 31 560 0101', hours: 'Mon–Fri 08:00–16:00', latitude: -29.8587, longitude: 31.0218 },
+  { id: 'w3', name: 'Khetha Cape Town',     province: 'Western Cape',  address: '14 Adderley St, Cape Town CBD, 8001',            phone: '+27 21 560 0102', hours: 'Mon–Thu 09:00–15:00', latitude: -33.9249, longitude: 18.4241 },
+  { id: 'w4', name: 'Khetha Polokwane',     province: 'Limpopo',       address: '78 Landdros Mare St, Polokwane, 0699',           phone: '+27 15 560 0103', hours: 'Mon–Fri 08:00–16:00', latitude: -23.9045, longitude: 29.4689 },
+  { id: 'w5', name: 'Khetha Nelspruit',     province: 'Mpumalanga',    address: '32 Brown St, Nelspruit CBD, 1200',               phone: '+27 13 560 0104', hours: 'Tue–Sat 08:00–14:00',  latitude: -25.4753, longitude: 30.9694 },
+  { id: 'w6', name: 'Khetha Kimberley',     province: 'Northern Cape', address: '5 Chapel St, Kimberley, 8301',                  phone: '+27 53 560 0105', hours: 'Mon–Fri 08:00–16:00', latitude: -28.7282, longitude: 24.7499 },
+  { id: 'w7', name: 'Khetha Mahikeng',      province: 'North West',    address: '10 Robinson St, Mahikeng, 2745',                phone: '+27 18 560 0106', hours: 'Mon–Fri 09:00–15:00', latitude: -25.8653, longitude: 25.6432 },
+  { id: 'w8', name: 'Khetha Bloemfontein', province: 'Free State',    address: '22 St Andrews St, Bloemfontein, 9301',          phone: '+27 51 560 0107', hours: 'Mon–Fri 08:00–16:00', latitude: -29.1210, longitude: 26.2140 },
+  { id: 'w9', name: 'Khetha East London',   province: 'Eastern Cape',  address: '67 Oxford St, East London CBD, 5201',           phone: '+27 43 560 0108', hours: 'Mon–Fri 08:00–16:00', latitude: -33.0153, longitude: 27.9116 },
 ];
